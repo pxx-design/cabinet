@@ -116,7 +116,7 @@ folio/ shots/     「找灵感」目录 —— 指向各设计站的缩略图
 _inbox/           待入库的参考丢这里
 INGEST.md         agent 中立的入库规范
 start.sh          起 localhost（磁盘桥必需）
-setup/            install.sh —— 安装 /translate 命令 + 转译 裸词
+setup/            install.sh —— 安装 /translate、转译 hook、(macOS) 自动 watcher
 ```
 
 这是 **6 张种子**，让首次打开不空。重点是用*你自己的*参考把它填满。打包图片

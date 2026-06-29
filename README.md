@@ -131,7 +131,7 @@ folio/ shots/     "find inspiration" directory — thumbnails linking to design 
 _inbox/           drop zone for references to ingest
 INGEST.md         the agent-neutral ingest spec
 start.sh          serve over localhost (required for the disk bridge)
-setup/            install.sh — installs the /translate command + 转译 keyword
+setup/            install.sh — installs /translate, the 转译 hook, and (macOS) the watcher
 ```
 
 This is a **seed set of 6 plates** so the app isn't empty on first open. The

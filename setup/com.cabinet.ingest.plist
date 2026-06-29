@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Cabinet auto-ingest watcher (macOS launchd). Installed by setup/install.sh,
+     which substitutes __CABINET_DIR__ and __CLAUDE_PATH__. Triggers watch-inbox.sh
+     whenever _inbox/ changes (e.g. you click "ingest" on the page). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.cabinet.ingest</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__CABINET_DIR__/watch-inbox.sh</string>
+  </array>
+  <key>WatchPaths</key>
+  <array>
+    <string>__CABINET_DIR__/_inbox</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__CLAUDE_PATH__</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>__CABINET_DIR__/_ingest.log</string>
+  <key>StandardErrorPath</key>
+  <string>__CABINET_DIR__/_ingest.log</string>
+</dict>
+</plist>
