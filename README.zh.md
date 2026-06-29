@@ -74,9 +74,9 @@ coding agent 才是「干活」的地方。所以最快的方式，是让 agent 
 第 3 步装好**两个全局触发器**，在任何项目里都能把你收的手法用进去：敲
 **`/translate`**（斜杠命令）或直接打 **`转译`**（裸词），不用再粘长 prompt。
 
-**入库就一条命令。** 暂存参考（`⌘V` →「入库」），然后在 Claude Code 里敲
-`/ingest`——它看不到你点按钮，所以由你触发。想点完即自动处理（点按钮 → 自动拆）？
-装可选的 macOS watcher（`watch-inbox.sh`）。
+**入库。** 暂存参考（`⌘V` →「入库」）。**macOS** 上 `install.sh` 已装好 watcher，点
+「入库」就自动处理；其他系统在 Claude Code 里敲 `/ingest`（它看不到你点按钮，所以由你
+触发，一条命令）。不想要 watcher？重跑 `./setup/install.sh --no-watcher`。
 
 <details>
 <summary>想手动装？</summary>
@@ -130,8 +130,8 @@ setup/            install.sh —— 安装 /translate 命令 + 转译 裸词
   `localhost`（即 `start.sh`），不能 `file://`。
 - **`python3`**（`start.sh` 靠它）+ **Pillow**（入库时量图）；Node 用来校验
   `data-v3.js` 语法。
-- *可选（macOS）*：`watch-inbox.sh` 能在你暂存图后自动跑入库，省得手动敲
-  `/ingest`——细节见脚本内注释。
+- *macOS*：`./setup/install.sh` 还会装一个 launchd watcher，点「入库」即自动处理
+  （加 `--no-watcher` 跳过）；其他系统用 `/ingest` 触发。
 
 ## 许可
 

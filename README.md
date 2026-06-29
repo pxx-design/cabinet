@@ -85,10 +85,10 @@ Step 3 installs **two global triggers**, both of which apply the moves you picke
 any project: type **`/translate`** (slash command) or just **`转译`** (bare keyword).
 No long prompt to retype.
 
-**Ingesting is one command.** Stage a reference (`⌘V` → **ingest**), then type
-`/ingest` in Claude Code — it can't see your button click, so you trigger it. Want it
-fully hands-off (click → processed for you)? Set up the optional macOS watcher
-(`watch-inbox.sh`).
+**Ingest.** Stage a reference (`⌘V` → **ingest**). On **macOS**, `install.sh` set up a
+watcher, so clicking ingest processes it automatically. On other systems, type
+`/ingest` in Claude Code (it can't see your click, so you trigger it — one command).
+Don't want the watcher? Re-run `./setup/install.sh --no-watcher`.
 
 <details>
 <summary>Prefer to set it up by hand?</summary>
@@ -146,8 +146,8 @@ status of the bundled images.
   System Access API, which needs `localhost` (via `start.sh`), not `file://`.
 - **`python3`** (powers `start.sh`) and **Pillow** (measures images during
   ingest); Node syntax-checks `data-v3.js`.
-- *Optional, macOS:* `watch-inbox.sh` auto-runs ingest whenever you stage images,
-  so you don't trigger `/ingest` by hand — see the comments inside the file.
+- *macOS:* `./setup/install.sh` also installs a launchd watcher so clicking "ingest"
+  is processed automatically (opt out with `--no-watcher`). Other OSes trigger with `/ingest`.
 
 ## License
 
