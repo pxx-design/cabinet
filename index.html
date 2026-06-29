@@ -33,7 +33,7 @@
     background:linear-gradient(rgba(247,245,240,.93), rgba(247,245,240,.80));
     backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
   }
-  /* 品牌：切面宝石标记（跨语言恒定符号）+ 中文字标灵感库；英文版换 Facet 复用同标记 */
+  /* 品牌：切面宝石标记（跨语言恒定符号）+ 中文字标灵感库；英文版换 Cabinet 复用同标记 */
   .brand{display:flex; align-items:center; gap:10px; text-decoration:none}
   .brand-mark{flex:none; display:block}
   .brand-name{font-family:var(--serif); font-size:19px; font-weight:500; letter-spacing:.06em; color:var(--ink)}
@@ -723,14 +723,14 @@
 
 <!-- ── 演示模式判定（Vercel 部署 / 本地 ?demo=1 测试）── -->
 <script>
-  window.REPO_URL = 'https://github.com/pxx-design/facet';
+  window.REPO_URL = 'https://github.com/pxx-design/cabinet';
   // 演示模式额外排除的图 id：软删只存浏览器 localStorage、部署不带 → 在这里 baked 进 demo。⚠️ 待填 trashed 清单。
   window.DEMO_TRASHED = [];
-  window.FACET_DEMO = window.FACET_DEMO === true
+  window.CABINET_DEMO = window.CABINET_DEMO === true
     || /\.vercel\.app$/.test(location.hostname)
     || /\.pages\.dev$/.test(location.hostname)
     || new URLSearchParams(location.search).has('demo');
-  if(window.FACET_DEMO) document.documentElement.classList.add('demo');
+  if(window.CABINET_DEMO) document.documentElement.classList.add('demo');
 </script>
 
 <!-- ── 画布引擎（demo-d 引力场，沿用；加 pause/resume 供模式切换）── -->
@@ -740,7 +740,7 @@
   // 回收站里的图彻底退出布局（不进 items/归一化/感觉词重心）——重载后画面按你留下的那批重铺
   const _saved0=(()=>{ try{return JSON.parse(localStorage.getItem('lingganku.v3'))||{}}catch(e){return {}} })();
   const _trashed0=new Set(_saved0.trashed||[]);
-  if(window.FACET_DEMO) (window.DEMO_TRASHED||[]).forEach(id=>_trashed0.add(id));   // 演示模式：永久排除已策展掉的图（不依赖 localStorage，感觉词自动跟着不显）
+  if(window.CABINET_DEMO) (window.DEMO_TRASHED||[]).forEach(id=>_trashed0.add(id));   // 演示模式：永久排除已策展掉的图（不依赖 localStorage，感觉词自动跟着不显）
   const KEPT = DATA.filter(e=>!_trashed0.has(e.id));
   const $ = s=>document.querySelector(s);
   const cv=$('#cv'), ctx=cv.getContext('2d');
@@ -1340,8 +1340,8 @@
   function setHot(fid,on){ document.querySelectorAll(`[data-fid="${fid}"]`).forEach(el=>el.classList.toggle('hot',on)); }
 
   /* ════ 演示模式（Vercel / ?demo=1）：纯浏览可玩，写盘/喂图转下载 CTA ════ */
-  const FACET_DEMO = !!window.FACET_DEMO;
-  const REPO_URL = window.REPO_URL || 'https://github.com/pxx-design/facet';
+  const CABINET_DEMO = !!window.CABINET_DEMO;
+  const REPO_URL = window.REPO_URL || 'https://github.com/pxx-design/cabinet';
   const DEMO_LANG = (navigator.language||'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
   const DEMO_T = {
     zh:{ cta:'在线体验版，创建自己的<b>灵感库 →</b>',
@@ -1352,7 +1352,7 @@
          note:'图片仅为示例，如涉及版权请联系删除' },
     en:{ cta:'Live demo — create your own <b>library →</b>',
          head:'Your saved techniques',
-         pitch:'Get Facet — let your AI put these techniques to work, in one click',
+         pitch:'Get Cabinet — let your AI put these techniques to work, in one click',
          get:'Get it',
          nudge:'Saved ✓ Want to use it? Open "Saved" (top-right)',
          note:'Images shown as examples — contact us to remove.' }
@@ -1376,7 +1376,7 @@
     adding ? state.picked.add(fid) : state.picked.delete(fid);
     persist(); scheduleDesk(); renderPicked();
     if($('#drawer').classList.contains('on')) renderDrawer();
-    if(FACET_DEMO && adding && state.picked.size>=2) demoNudge();
+    if(CABINET_DEMO && adding && state.picked.size>=2) demoNudge();
   }
 
   /* ── 锚点校准：拖圆点改 at，松手按 facet id 精确写回 data-v3.js（移植自 index.html）── */
@@ -1639,7 +1639,7 @@
     connTxt.textContent='连接'; return false;
   }
   async function tryRestore(){
-    if(FACET_DEMO) return;
+    if(CABINET_DEMO) return;
     try{ dirHandle = await idbGet('dir'); if(dirHandle) await refreshConn(); }catch(e){}
   }
   connBtn.onclick = async ()=>{
@@ -1784,7 +1784,7 @@
     }catch(e){ flash('暂存失败: '+e.message); }
   }
   window.addEventListener('paste', e=>{
-    if(FACET_DEMO) return;
+    if(CABINET_DEMO) return;
     const f = [...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image'));
     if(f){ e.preventDefault(); stage(f.getAsFile()); }
   });
@@ -1794,7 +1794,7 @@
   window.addEventListener('dragleave', ()=>{ if(--dragDepth<=0){ dragDepth=0; $('#drop').classList.remove('on'); } });
   window.addEventListener('drop', async e=>{
     e.preventDefault(); dragDepth=0; $('#drop').classList.remove('on');
-    if(FACET_DEMO) return;
+    if(CABINET_DEMO) return;
     const files = [...(e.dataTransfer.files||[])].filter(f=>/^(image|video)\//.test(f.type));
     for(const f of files){ await stage(f); }
   });
@@ -1831,7 +1831,7 @@
 
   tryRestore().then(reconcile);
   syncCanvasTrash(); renderTrash(); renderPicked();
-  if(FACET_DEMO) initDemo();
+  if(CABINET_DEMO) initDemo();
 
   window.openDrawer = openDrawer;
 })();

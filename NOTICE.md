@@ -1,6 +1,6 @@
 # Notice — reference images
 
-Facet is a tool for *describing* visual technique. To make the seed library
+Cabinet is a tool for *describing* visual technique. To make the seed library
 usable out of the box, this repository ships a small set of **low-resolution**
 reference images. They are included for study, commentary, and identification —
 not as original work of this project.

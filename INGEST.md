@@ -1,4 +1,4 @@
-# Facet — ingest spec (for headless / agent sessions)
+# Cabinet — ingest spec (for headless / agent sessions)
 
 > Invoked by a coding agent (Claude Code, Codex, …) when images appear in `_inbox/`.
 > The shell (command / skill) only says "read this file and follow it"; all logic lives here. Self-contained.

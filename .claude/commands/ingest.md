@@ -1,5 +1,5 @@
 ---
-description: Ingest the images in _inbox/ into the Facet library
+description: Ingest the images in _inbox/ into the Cabinet library
 ---
 
 Read `INGEST.md` at the repo root and follow it exactly.

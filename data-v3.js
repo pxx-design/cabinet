@@ -1,4 +1,4 @@
-// Facet · data source (open-source seed set)
+// Cabinet · data source (open-source seed set)
 // Model: feel ← move (facet) ← plate (reference)
 // - Each plate is a specimen; facets are the concrete moves that achieve its feel.
 // - facet.feels: which feel-words this move serves (feel-words live only on facets).

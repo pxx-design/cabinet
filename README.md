@@ -1,6 +1,6 @@
 <div align="center">
 
-# Facet
+# Cabinet
 
 **Translate a feeling you can't name into something an AI can build.**
 
@@ -15,7 +15,7 @@ ask an AI to "make it feel like that," the words come out vague and the result
 comes back generic. The gap isn't the model. It's that the **feeling was never
 broken down into transferable moves**.
 
-Facet is a small web app that does exactly that. It turns a reference into
+Cabinet is a small web app that does exactly that. It turns a reference into
 **facets** — named, reusable moves — and hands them to your coding agent as
 precise instructions, with a borrowing boundary attached so you adapt the
 technique instead of copying the picture.
@@ -32,7 +32,7 @@ In the age of AI, copying is no longer only hand-and-eye training. What's worth
 training now is **observation and expression** — *which part do I actually
 like? what creates this feeling? how would I say it in my own work?*
 
-Facet is built for exactly that. Instead of handing you a whole-image prompt, it
+Cabinet is built for exactly that. Instead of handing you a whole-image prompt, it
 lets you learn — as you use it — what move the author reached for and why it
 works, so you can carry that **technique** across. Learn by using, use to learn —
 not assemble a copy of someone else's finished work.
@@ -60,7 +60,7 @@ references)                                          the picked moves + already 
 ```
 
 The browser is the interface, the disk is the bridge, and **the conversation
-with your coding agent is where the model's ability actually happens.** Facet
+with your coding agent is where the model's ability actually happens.** Cabinet
 doesn't generate the translation in the page — your agent already knows your
 product context, so it does it an order of magnitude better.
 
