@@ -67,22 +67,39 @@ product context, so it does it an order of magnitude better.
 ## Quickstart
 
 Cabinet is a **Claude Code project with a visual front-end** — the browser page
-is where you look; your coding agent is where the work happens.
+is where you look; your coding agent is where the work happens. So the fastest
+setup is to let your agent do it.
 
-1. **Clone and enter** — `git clone https://github.com/pxx-design/cabinet && cd cabinet`
-2. **Open the folder in Claude Code** (or any agent that can read `INGEST.md`).
-3. **Serve it locally** — run `./start.sh`; it opens at `http://localhost:8777`.
-   The disk bridge needs `localhost` — Chrome blocks folder access on a `file://`
-   page, so double-clicking `index.html` can browse but can't save or ingest.
-4. **Connect** — click **connect** (bottom-left, the pulsing dot) and pick the
-   `cabinet` folder you just cloned.
-5. **Use it** — roam the feel-map and summon by feeling. To add your own: paste a
-   reference (`⌘V`), hit **ingest** to stage it, then run **`/ingest`** in Claude
-   Code to break it into moves. In any other project, run **`/translate`** to
-   apply the moves you picked.
+**Paste this into Claude Code:**
+
+```text
+Clone and run Cabinet for me: git clone https://github.com/pxx-design/cabinet && cd cabinet,
+then run ./start.sh in the background so it opens in my browser. Tell me to click "connect"
+(bottom-left) and pick the cabinet folder. After that, whenever I paste a design reference
+into the page and hit "ingest", run /ingest to break it into reusable techniques (spec: INGEST.md).
+```
+
+Then, **in any other project**, paste this to use what you collected:
+
+```text
+Read the techniques I picked in <path-to>/cabinet/_desk.json and apply them to <what I'm
+building> — follow each move's "tune" boundary: adapt the technique, never copy the reference.
+```
+
+<details>
+<summary>Prefer to set it up by hand?</summary>
+
+1. `git clone https://github.com/pxx-design/cabinet && cd cabinet`
+2. Open the folder in Claude Code (or any agent that can read `INGEST.md`).
+3. `./start.sh` — opens at `http://localhost:8777`. The disk bridge needs
+   `localhost`; double-clicking `index.html` can browse but can't save or ingest.
+4. Click **connect** (bottom-left, the pulsing dot) and pick the `cabinet` folder.
+5. Browse and summon; paste references (`⌘V`) → **ingest** → run `/ingest`.
+
+</details>
 
 > **Just looking?** Double-click `index.html` for a read-only preview — browsing
-> and summon work; saving, ingest, and `/translate` need the flow above.
+> and summon work; saving, ingest, and translate need the flow above.
 
 ## The two flows
 
