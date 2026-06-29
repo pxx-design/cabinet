@@ -20,6 +20,23 @@ Facet is a small web app that does exactly that. It turns a reference into
 precise instructions, with a borrowing boundary attached so you adapt the
 technique instead of copying the picture.
 
+## Copying vs. learning
+
+Borrowing was never about reproducing the original — it's about learning from
+it. In art and Chinese calligraphy you begin by copying the masters (*lín mó*,
+临摹), but the copy was never the point: you take in *why* something works until
+you can leave the copybook behind and make work that is your own — your own
+paintings, your own hand.
+
+In the age of AI, copying is no longer only hand-and-eye training. What's worth
+training now is **observation and expression** — *which part do I actually
+like? what creates this feeling? how would I say it in my own work?*
+
+Facet is built for exactly that. Instead of handing you a whole-image prompt, it
+lets you learn — as you use it — what move the author reached for and why it
+works, so you can carry that **technique** across. Learn by using, use to learn —
+not assemble a copy of someone else's finished work.
+
 ## The model: feel ← move ← reference
 
 - **Reference** (a plate) — a screenshot or image you collected.
