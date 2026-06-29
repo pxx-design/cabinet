@@ -94,7 +94,7 @@ aren't carried over automatically.
 
 ```
 index.html        the app (feel-map + drawer + summon + ingest tray + disk bridge)
-data-v3.js        the data source — 7 curated seed plates (field docs in the header)
+data-v3.js        the data source — 6 curated seed plates (field docs in the header)
 assets/ thumbs/   seed reference images (low-res) + thumbnails
 folio/ shots/     "find inspiration" directory — thumbnails linking to design sites
 _inbox/           drop zone for references to ingest
@@ -102,7 +102,7 @@ INGEST.md         the agent-neutral ingest spec
 start.sh          optional: serve over localhost when file:// blocks the bridge
 ```
 
-This is a **seed set of 7 plates** so the app isn't empty on first open. The
+This is a **seed set of 6 plates** so the app isn't empty on first open. The
 point is to fill it with *your* references. See [NOTICE.md](./NOTICE.md) for the
 status of the bundled images.
 

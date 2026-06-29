@@ -7,7 +7,7 @@ not as original work of this project.
 
 ## What's included
 
-- **`assets/` + `thumbs/`** — 7 curated reference specimens (the seed library).
+- **`assets/` + `thumbs/`** — 6 curated reference specimens (the seed library).
   Each is downscaled to a low resolution. The facet text *about* each image
   (the move descriptions in `data-v3.js`) is original to this project and is
   MIT-licensed; the images themselves are not.

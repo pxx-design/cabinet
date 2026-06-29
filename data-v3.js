@@ -4,92 +4,9 @@
 // - facet.feels: which feel-words this move serves (feel-words live only on facets).
 // - facet.at: anchor position of the move on the image, [x%, y%].
 // - facet.mech: why it works (for humans); facet.say: how to tell an AI (for AI); facet.tune: borrowing boundary.
-// Seed set = 7 curated plates. Add your own via the /ingest flow (see INGEST.md).
+// Seed set = 6 curated plates. Add your own via the /ingest flow (see INGEST.md).
 
 window.LIBRARY = [
-  {
-    "id": "0001",
-    "title": "Google 柔彩超现实地景",
-    "family": "Image",
-    "asset": "assets/0001.jpg",
-    "thumb": "thumbs/0001.jpg",
-    "ar": 0.75,
-    "colors": [
-      "#c4b4d6",
-      "#e89a84",
-      "#f4dcc3",
-      "#aec24a",
-      "#74ad8f"
-    ],
-    "facets": [
-      {
-        "id": "0001-color",
-        "zh": "柔彩渐变",
-        "en": "pastel gradient",
-        "at": [
-          60,
-          16
-        ],
-        "feels": [
-          "柔和",
-          "梦幻"
-        ],
-        "mech": "柔和、低攻击性的未来感，而不是高饱和霓虹。",
-        "say": "Use soft pastel gradients as atmospheric background color fields instead of sharp high-saturation gradients.",
-        "q": "pastel gradient soft future brand visual",
-        "tune": "渐变保持低饱和和空气感，避免变成糖果色彩虹条。"
-      },
-      {
-        "id": "0001-space",
-        "zh": "超现实品牌地景",
-        "en": "surreal brand landscape",
-        "at": [
-          52,
-          72
-        ],
-        "feels": [
-          "梦幻",
-          "未来"
-        ],
-        "mech": "用抽象场景承载品牌气质，而不是放普通插画。",
-        "say": "Create a hero section with a surreal landscape-like visual field that supports the brand mood without literal product screenshots.",
-        "q": "surreal brand landscape hero design",
-        "tune": "超现实空间用于暗示氛围，不要复刻原场景或品牌标识。"
-      },
-      {
-        "id": "0001-surface",
-        "zh": "虹彩玻璃形体",
-        "en": "iridescent glass forms",
-        "at": [
-          39,
-          43
-        ],
-        "feels": [
-          "未来"
-        ],
-        "mech": "轻盈、未来、半透明的纵向发光形体，做安静的视觉锚。",
-        "say": "Use slim iridescent glass forms or translucent vertical accents as quiet visual anchors.",
-        "q": "iridescent glass forms brand visual design",
-        "tune": "虹彩形体要少量使用，太多会变成装饰性科幻风。"
-      },
-      {
-        "id": "0001-texture",
-        "zh": "胶片颗粒",
-        "en": "film grain",
-        "at": [
-          14,
-          88
-        ],
-        "feels": [
-          "柔和"
-        ],
-        "mech": "削弱纯数字感，让画面有温度和空气感。",
-        "say": "Add a subtle film-grain or noise overlay to soften digital gradients and give the page a tactile atmosphere.",
-        "q": "film grain pastel gradient web design",
-        "tune": "颗粒几乎不可见即可，用来软化纯数字渐变，不要把 UI 弄脏。"
-      }
-    ]
-  },
   {
     "id": "0016",
     "title": "邮路档案·拟物陈列页",

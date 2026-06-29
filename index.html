@@ -788,7 +788,7 @@
     if(bMax-bMin<1){ bMin=Math.min(...bs); bMax=Math.max(...bs); }
   }
   recomputeNorm(KEPT);
-  const PAD=170, SPREAD=0.72;   // SPREAD<1：整体往中心收（A 收紧云团：0.84→0.72 更密更稳）
+  const PAD=170, SPREAD=Math.min(0.72, 0.30+KEPT.length*0.03);   // 自适应：少图收紧成团、多图(≥14)沿用 0.72（A 收紧云团）
   function homePos(e){
     const m=_metric.get(e.id)||{temp:0,bright:50};
     let xN = tMax>tMin ? (m.temp-tMin)/(tMax-tMin) : .5;     // 0 最暖 → 1 最冷
@@ -858,11 +858,15 @@
   // 且顺带显示这种感觉聚在色彩空间哪片（位置由色彩定、文字给感觉，两者并存）
   function buildWords(src){
     const wc={}; src.forEach(it=>it.feels.forEach((c,w)=>wc[w]=(wc[w]||0)+c));
-    const ws=Object.keys(wc).map(w=>{
+    let ws=Object.keys(wc).map(w=>{
       let sx=0,sy=0,n=0;
       src.forEach(it=>{ if(it.feels.has(w)){ sx+=it.hx; sy+=it.hy; n++; } });
       return {w, x:sx/n, y:sy/n, n:wc[w]};
     });
+    // 图少时词云会糊：只留手法数最多的 top-N，砍长尾、防标签重心叠印（"释撞"那种）
+    ws.sort((a,b)=>b.n-a.n);
+    const CAP = src.length<=10 ? 8 : 14;
+    if(ws.length>CAP) ws=ws.slice(0,CAP);
     // 标签互斥：拉开重叠的感觉词（多数都平均到中心附近，不拉开会挤成一坨读不清）
     const MIN=200;
     for(let p=0;p<140;p++){ let moved=false;
