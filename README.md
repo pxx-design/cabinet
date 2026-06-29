@@ -78,12 +78,17 @@ Set up Cabinet for me:
 2. run ./start.sh in the background so it opens in my browser, then tell me to click
    "connect" (bottom-left) and pick the cabinet folder
 3. run ./setup/install.sh to install the translate triggers globally
-After that: when I paste a reference into the page and hit "ingest", run /ingest.
+After that, I'll stage references in the page and tell you when to run /ingest.
 ```
 
 Step 3 installs **two global triggers**, both of which apply the moves you picked in
 any project: type **`/translate`** (slash command) or just **`转译`** (bare keyword).
 No long prompt to retype.
+
+**Ingesting is one command.** Stage a reference (`⌘V` → **ingest**), then type
+`/ingest` in Claude Code — it can't see your button click, so you trigger it. Want it
+fully hands-off (click → processed for you)? Set up the optional macOS watcher
+(`watch-inbox.sh`).
 
 <details>
 <summary>Prefer to set it up by hand?</summary>

@@ -68,11 +68,15 @@ coding agent 才是「干活」的地方。所以最快的方式，是让 agent 
 1. git clone https://github.com/pxx-design/cabinet && cd cabinet
 2. 在后台运行 ./start.sh 让它在我浏览器里打开，然后告诉我点左下「连接」、选 cabinet 文件夹
 3. 运行 ./setup/install.sh 把转译触发器装成全局
-之后：我把参考粘进页面、点「入库」，你就运行 /ingest。
+之后我会在页面里暂存参考，并告诉你什么时候运行 /ingest。
 ```
 
 第 3 步装好**两个全局触发器**，在任何项目里都能把你收的手法用进去：敲
 **`/translate`**（斜杠命令）或直接打 **`转译`**（裸词），不用再粘长 prompt。
+
+**入库就一条命令。** 暂存参考（`⌘V` →「入库」），然后在 Claude Code 里敲
+`/ingest`——它看不到你点按钮，所以由你触发。想点完即自动处理（点按钮 → 自动拆）？
+装可选的 macOS watcher（`watch-inbox.sh`）。
 
 <details>
 <summary>想手动装？</summary>
