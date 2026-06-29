@@ -67,13 +67,12 @@ coding agent 才是「干活」的地方。所以最快的方式，是让 agent 
 帮我装好 Cabinet：
 1. git clone https://github.com/pxx-design/cabinet && cd cabinet
 2. 在后台运行 ./start.sh 让它在我浏览器里打开，然后告诉我点左下「连接」、选 cabinet 文件夹
-3. 把 /translate 命令装成全局：把 setup/translate.md 复制到 ~/.claude/commands/translate.md，
-   并把文件里的 __CABINET_DIR__ 替换成本文件夹的绝对路径
+3. 运行 ./setup/install.sh 把转译触发器装成全局
 之后：我把参考粘进页面、点「入库」，你就运行 /ingest。
 ```
 
-这一段也顺手装好了全局 **`/translate`**——以后在任何别的项目里只敲 `/translate`，
-agent 就会把你收的手法用进去（以每条手法的说法为主、守住借鉴边界），不用再粘长 prompt。
+第 3 步装好**两个全局触发器**，在任何项目里都能把你收的手法用进去：敲
+**`/translate`**（斜杠命令）或直接打 **`转译`**（裸词），不用再粘长 prompt。
 
 <details>
 <summary>想手动装？</summary>
@@ -113,6 +112,7 @@ folio/ shots/     「找灵感」目录 —— 指向各设计站的缩略图
 _inbox/           待入库的参考丢这里
 INGEST.md         agent 中立的入库规范
 start.sh          起 localhost（磁盘桥必需）
+setup/            install.sh —— 安装 /translate 命令 + 转译 裸词
 ```
 
 这是 **6 张种子**，让首次打开不空。重点是用*你自己的*参考把它填满。打包图片

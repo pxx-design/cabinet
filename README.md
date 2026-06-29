@@ -77,14 +77,13 @@ Set up Cabinet for me:
 1. git clone https://github.com/pxx-design/cabinet && cd cabinet
 2. run ./start.sh in the background so it opens in my browser, then tell me to click
    "connect" (bottom-left) and pick the cabinet folder
-3. install the /translate command globally: copy setup/translate.md to
-   ~/.claude/commands/translate.md, replacing __CABINET_DIR__ with this folder's absolute path
+3. run ./setup/install.sh to install the translate triggers globally
 After that: when I paste a reference into the page and hit "ingest", run /ingest.
 ```
 
-That one paste also installs a global **`/translate`** — so in any other project you
-just type `/translate` and your agent applies the moves you picked (leading with each
-move's instruction, respecting its borrowing boundary). No long prompt to retype.
+Step 3 installs **two global triggers**, both of which apply the moves you picked in
+any project: type **`/translate`** (slash command) or just **`转译`** (bare keyword).
+No long prompt to retype.
 
 <details>
 <summary>Prefer to set it up by hand?</summary>
@@ -127,6 +126,7 @@ folio/ shots/     "find inspiration" directory — thumbnails linking to design 
 _inbox/           drop zone for references to ingest
 INGEST.md         the agent-neutral ingest spec
 start.sh          serve over localhost (required for the disk bridge)
+setup/            install.sh — installs the /translate command + 转译 keyword
 ```
 
 This is a **seed set of 6 plates** so the app isn't empty on first open. The
