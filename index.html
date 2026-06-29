@@ -134,6 +134,16 @@
   #conn-f.live{color:var(--ink)}
   #conn-f.live .conn-ico{color:#4a9e6d}
   #conn-f.stale .conn-ico{color:var(--accent)}
+  /* 未链接强提示：脉冲红点（连上=live / 需重连=stale 即隐——stale 本身已是红图标）*/
+  #conn-f::before, #conn-f::after{
+    content:''; position:absolute; top:-2px; right:-2px;
+    width:8px; height:8px; border-radius:50%; background:var(--accent);
+  }
+  #conn-f::after{ box-shadow:0 0 0 2px #fff }                                 /* 实心点 + 白环抬起 */
+  #conn-f::before{ opacity:.55; animation:connpulse 2s ease-out infinite }   /* 向外扩散的涟漪 */
+  #conn-f.live::before, #conn-f.live::after,
+  #conn-f.stale::before, #conn-f.stale::after{ display:none }
+  @keyframes connpulse{ 0%{transform:scale(1);opacity:.55} 70%,100%{transform:scale(2.6);opacity:0} }
   body.mode-discover #conn-f{display:none}
 
   /* ════ 演示模式（Vercel / ?demo=1）：隐写盘/编辑动作，只留纯浏览功能 ════ */
@@ -676,7 +686,7 @@
   <div id="hint"><span class="ht">单击一张图看拆解 · 输入或点感觉词召唤同类 · 滚轮缩放 · 拖拽漫游</span><span class="hq">?</span></div>
 
   <!-- 磁盘桥连接钮（段②；左下独立）— 连一次，收的手法落 _desk.json 供「转译」读 -->
-  <button id="conn-f" title="连接灵感库文件夹 — 收的手法才能写入 _desk.json 给「转译」用"><svg class="conn-ico" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 4.4c0-.6.4-1 1-1h2.9l1.2 1.4h6c.6 0 1 .4 1 1v5.9c0 .6-.4 1-1 1H2.6c-.6 0-1-.4-1-1V4.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span id="conn-f-txt">连接</span></button>
+  <button id="conn-f" title="连接文件夹 — 选你下载的 cabinet 文件夹（含 data-v3.js）；收的手法才能写入 _desk.json 给「转译」用"><svg class="conn-ico" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 4.4c0-.6.4-1 1-1h2.9l1.2 1.4h6c.6 0 1 .4 1 1v5.9c0 .6-.4 1-1 1H2.6c-.6 0-1-.4-1-1V4.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span id="conn-f-txt">连接</span></button>
 
   <!-- 入库托盘面板（⌘V/拖图 → _inbox；左下、浮在连接钮上方）— 攒图，点「入库」写 .go 标记触发 watcher -->
   <div id="tray">
@@ -1625,7 +1635,7 @@
   });
 
   /* ── 段②：磁盘桥（File System Access API；移植自 index.html，同 idb/同 _desk.json 契约）──
-       连一次（这里或 index.html 任一处）→ 收的手法写 19-灵感库/_desk.json，「转译」直接读 */
+       连一次 → 收的手法写仓库根目录的 _desk.json，「转译」直接读 */
   let dirHandle = null, unconnToastShown = false;
   function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('lingganku-v3',1);
     r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
@@ -1658,7 +1668,7 @@
       dirHandle = await window.showDirectoryPicker({mode:'readwrite', id:'lingganku'});
       if((await dirHandle.requestPermission({mode:'readwrite'}))!=='granted'){ flash('未授权写入'); return; }
       try{ await dirHandle.getFileHandle('data-v3.js'); }
-      catch(e){ flash('这不是灵感库根目录（缺 data-v3.js）——请选 19-灵感库'); dirHandle=null; await refreshConn(); return; }
+      catch(e){ flash('这不是项目根目录（缺 data-v3.js）——请选你下载的 cabinet 文件夹'); dirHandle=null; await refreshConn(); return; }
       await idbSet('dir', dirHandle);
       await refreshConn();
       flash('已连接 '+dirHandle.name);
@@ -1744,7 +1754,7 @@
     ingesting = pending;
     go.style.display = items.length ? '' : 'none';
     go.disabled = pending;
-    go.textContent = pending ? '入库中…' : `入库 ${items.length} 张`;
+    go.textContent = pending ? '已入队…' : `入库 ${items.length} 张`;
     if(!items.length){
       info.innerHTML = `<span class="cmd">${PASTE_KEY}</span> 粘贴 / 拖图 到这里入库`;
     }else if(!pending){
@@ -1753,9 +1763,10 @@
       const started = await goStartedMs();
       const mins = started ? Math.floor((Date.now()-started)/60000) : 0;
       const when = (!started || mins<1) ? '刚开始' : `已 ${mins} 分钟`;
-      info.innerHTML = `正在入库 <b>${items.length}</b> 张…`
-        + `<span class="sub">${when} · 完成后会自动出现在画布上</span>`
-        + (mins>=STUCK_MIN ? `<span class="sub">超过 ${STUCK_MIN} 分钟了 · 看 _ingest.log，或 <a id="tray-reset">重置</a> 重来</span>` : '');
+      info.innerHTML = `已入队 <b>${items.length}</b> 张 · 待拆解`
+        + `<span class="sub">在你的 coding agent 里运行 <b>/ingest</b> 拆解（装了 watcher 则自动跑）</span>`
+        + `<span class="sub">${when} · 完成后自动上画布</span>`
+        + (mins>=STUCK_MIN ? `<span class="sub">久无动静？看 _ingest.log 或 <a id="tray-reset">重置</a></span>` : '');
       const rb = $('#tray-reset'); if(rb) rb.onclick = resetGo;
     }
     strip.innerHTML = items.map(it=>
@@ -1774,7 +1785,7 @@
   }
   $('#ingest-go').onclick = async ()=>{
     if(!(await refreshConn())){ flash('先点左下「连接」'); return; }
-    try{ await saveFile('_inbox','.go',new Blob(['go'])); flash('已触发入库 — 完成后切回本页自动上图'); renderTray(); }
+    try{ await saveFile('_inbox','.go',new Blob(['go'])); flash('已入队 — 在 coding agent 里运行 /ingest 拆解；完成后本页自动上图'); renderTray(); }
     catch(e){ flash('触发失败: '+e.message); }
   };
   async function stage(file){

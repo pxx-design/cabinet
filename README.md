@@ -66,13 +66,23 @@ product context, so it does it an order of magnitude better.
 
 ## Quickstart
 
-1. **Open `index.html`** — double-click it. Browse the feel-map, open the
-   drawer, read the anchored moves, copy color swatches. State persists in
-   `localStorage`.
-2. **Connect the folder** (optional, for the disk bridge) — the "connect"
-   button bottom-left authorizes this folder so `⌘V` ingest and `_desk.json`
-   work. If the browser blocks the File System Access prompt under `file://`,
-   run `./start.sh` to open over `localhost` instead.
+Cabinet is a **Claude Code project with a visual front-end** — the browser page
+is where you look; your coding agent is where the work happens.
+
+1. **Clone and enter** — `git clone https://github.com/pxx-design/cabinet && cd cabinet`
+2. **Open the folder in Claude Code** (or any agent that can read `INGEST.md`).
+3. **Serve it locally** — run `./start.sh`; it opens at `http://localhost:8777`.
+   The disk bridge needs `localhost` — Chrome blocks folder access on a `file://`
+   page, so double-clicking `index.html` can browse but can't save or ingest.
+4. **Connect** — click **connect** (bottom-left, the pulsing dot) and pick the
+   `cabinet` folder you just cloned.
+5. **Use it** — roam the feel-map and summon by feeling. To add your own: paste a
+   reference (`⌘V`), hit **ingest** to stage it, then run **`/ingest`** in Claude
+   Code to break it into moves. In any other project, run **`/translate`** to
+   apply the moves you picked.
+
+> **Just looking?** Double-click `index.html` for a read-only preview — browsing
+> and summon work; saving, ingest, and `/translate` need the flow above.
 
 ## The two flows
 
@@ -99,7 +109,7 @@ assets/ thumbs/   seed reference images (low-res) + thumbnails
 folio/ shots/     "find inspiration" directory — thumbnails linking to design sites
 _inbox/           drop zone for references to ingest
 INGEST.md         the agent-neutral ingest spec
-start.sh          optional: serve over localhost when file:// blocks the bridge
+start.sh          serve over localhost (required for the disk bridge)
 ```
 
 This is a **seed set of 6 plates** so the app isn't empty on first open. The
@@ -108,11 +118,14 @@ status of the bundled images.
 
 ## Requirements
 
-- A modern Chromium-based browser (the disk bridge uses the File System Access API).
-- A coding agent (Claude Code, or any agent that can read `INGEST.md`) for the
-  ingest/translate flows.
-- Optional: `python3` + Pillow (measuring images during ingest), Node (syntax-
-  checking `data-v3.js`).
+- **Claude Code** (or any agent that can read `INGEST.md`) — this does the actual
+  work of ingest and translate; required for everything beyond browsing.
+- A **Chromium-based browser** for the front-end. The disk bridge uses the File
+  System Access API, which needs `localhost` (via `start.sh`), not `file://`.
+- **`python3`** (powers `start.sh`) and **Pillow** (measures images during
+  ingest); Node syntax-checks `data-v3.js`.
+- *Optional, macOS:* `watch-inbox.sh` auto-runs ingest whenever you stage images,
+  so you don't trigger `/ingest` by hand — see the comments inside the file.
 
 ## License
 
