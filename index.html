@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灵感库 4.0 · 画布 ⇄ 找灵感</title>
+<style>
+  /* ── 灵感库 4.0 外壳：一页两模式（画布·拆解 ⇄ 找灵感·上游）──
+       画布 = demo-d 引力场（Canvas2D，沿用）；找灵感 = demo-e 瀑布流（沿用）
+       本次只拼外壳 + 顶部切换；入库/抽屉/临摹本 等器官留下一步 */
+  :root{
+    --bg:#f7f5f0; --ink:#1a1a1a; --sub:#8a8478; --line:#e3dfd6; --accent:#b0402f;
+    --panel:#ffffff; --pline:#d8d3c6; --chip:#efece5; --board:#ece9e2;
+    --paper:#f7f5f0; --paper2:#f1eee7; --ink-soft:#6b6862; --ink-faint:#a39e93; --card:#fff;
+    --serif:Georgia,"Songti SC","Noto Serif SC",serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{height:100%}
+  body{
+    min-height:100%; background:var(--bg); color:var(--ink);
+    font-family:"PingFang SC",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  body.mode-canvas{height:100%; overflow:hidden}
+  body.mode-discover{overflow-y:auto}
+  a{color:inherit; text-decoration:none}
+
+  /* ── 共享顶栏 + 模式切换 ── */
+  .shell-head{
+    position:fixed; inset:0 0 auto 0; height:56px; z-index:60;
+    display:flex; justify-content:space-between; align-items:center; padding:0 22px;
+    background:linear-gradient(rgba(247,245,240,.93), rgba(247,245,240,.80));
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
+  }
+  /* 品牌：切面宝石标记（跨语言恒定符号）+ 中文字标灵感库；英文版换 Facet 复用同标记 */
+  .brand{display:flex; align-items:center; gap:10px; text-decoration:none}
+  .brand-mark{flex:none; display:block}
+  .brand-name{font-family:var(--serif); font-size:19px; font-weight:500; letter-spacing:.06em; color:var(--ink)}
+  .brand-name b{color:var(--accent); font-weight:700}
+  /* 顶部切换：JS 实时算 SVG path metaball（floema 真方案）— 居中；rest 两胶囊相接（不相交），hover 拉丝长颈；脆角；选中=文字下朱砂点 */
+  .seg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:165px; height:36px; pointer-events:none}
+  .seg-svg{position:absolute; inset:0; width:165px; height:36px; overflow:visible}
+  #seg-path{fill:#ffffff}
+  #seg-glow{transition:opacity .25s}   /* hover 砖红光晕，位置随鼠标（JS 设 cx/cy），裁进胶囊形状 */
+  /* 命中区固定不动（修中点抖动）；只让里面文字位移，由 JS 逐帧驱动与 path 同步 */
+  .lobe{
+    pointer-events:auto; position:absolute; top:0; height:36px; width:50%; z-index:2;
+    border:none; background:none; cursor:pointer; padding:0;
+  }
+  .lobe[data-mode="canvas"]{left:0}
+  .lobe[data-mode="discover"]{right:0}
+  .seg-lbl{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font:inherit; font-size:13px; font-weight:400; letter-spacing:.04em; color:#241f21;
+    pointer-events:none; will-change:transform;
+  }
+  .lobe.on .seg-lbl{font-weight:500}
+  /* 选中态：文字正下方一个朱砂点（非光晕），随文字平移 */
+  .seg-dot{position:absolute; left:50%; bottom:4px; transform:translate(-50%,3px); opacity:0;
+    width:4px; height:4px; border-radius:50%; background:var(--accent);
+    transition:transform .22s cubic-bezier(.22,.9,.32,1), opacity .2s}
+  .lobe.on .seg-dot{opacity:1; transform:translate(-50%,0)}
+
+  /* ── 模式容器 ── */
+  .mode{display:none}
+  .mode.on{display:block}
+
+  /* ════════ 模式 A：画布（demo-d 引力场）════════ */
+  canvas#cv{position:fixed; inset:0; display:block; cursor:grab; z-index:1}
+  canvas#cv.dragging{cursor:grabbing}
+
+  #summon{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+    z-index:45; display:flex; align-items:center; gap:8px;
+    width:430px; padding:11px 16px;
+    background:rgba(255,255,255,.92); border:1px solid var(--pline); border-radius:12px;
+    box-shadow:0 4px 20px rgba(26,26,26,.06); backdrop-filter:blur(10px);
+    transition:border-color .25s, box-shadow .25s;
+  }
+  #summon:focus-within{border-color:var(--accent); box-shadow:0 0 22px rgba(176,64,47,.14)}
+  #summon svg{flex:none; opacity:.5}
+  #summon input{flex:1; background:none; border:none; outline:none; font:inherit; font-size:14px; color:var(--ink); letter-spacing:.03em}
+  #summon input::placeholder{color:#b3ac9f}
+  #summon .x{flex:none; cursor:pointer; border:none; background:none; color:var(--sub); font-size:14px; padding:2px 4px; display:none}
+  #summon.live .x{display:block}
+  #summon .n{flex:none; font-size:11px; color:var(--accent); letter-spacing:.06em; display:none; white-space:nowrap}
+  #summon.live .n{display:block}
+
+  #fbar{
+    position:fixed; left:50%; bottom:88px; transform:translateX(-50%);
+    z-index:44; max-width:760px; padding:12px 18px;
+    background:rgba(255,255,255,.96); border:1px solid var(--pline); border-radius:12px;
+    font-size:12.5px; line-height:1.7; color:var(--ink);
+    opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  #fbar.on{opacity:1}
+  #fbar .say{color:var(--ink)}
+  #fbar .tune{color:var(--sub); font-size:11.5px}
+  #fbar .tune b{color:var(--accent); font-weight:600}
+
+  /* 操作提示：默认只是右下角一个弱 ? 徽标，hover 才向左展开完整提示（.off 已废，旧调用成无害空操作）*/
+  #hint{
+    position:fixed; right:22px; bottom:26px; z-index:45;
+    display:flex; align-items:center; justify-content:flex-end;
+  }
+  /* ? = 幽灵次级：裸字，hover 才出底色（同回收站，floema 模式）*/
+  #hint .hq{
+    flex:none; width:26px; height:26px; border-radius:50%;
+    background:none; border:1px solid transparent;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; color:var(--ink-faint); cursor:default; transition:color .2s, background .2s;
+  }
+  #hint:hover .hq{background:rgba(255,255,255,.95); color:var(--accent)}
+  #hint .ht{
+    max-width:0; overflow:hidden; white-space:nowrap; opacity:0; padding:0;
+    margin-right:8px; line-height:26px; font-size:11.5px; color:var(--sub); letter-spacing:.04em;
+    background:rgba(255,255,255,.92); border-radius:999px; backdrop-filter:blur(10px);
+    transition:max-width .35s cubic-bezier(.16,1,.3,1), opacity .25s, padding .35s;
+  }
+  #hint:hover .ht{max-width:440px; opacity:1; padding:0 14px; border:1px solid var(--line)}
+
+  /* 磁盘桥连接钮（左下；纯白实底无描边，跟胶囊/已收同材质；带状态点）*/
+  #conn-f{
+    position:fixed; left:22px; bottom:31px; z-index:45;   /* bottom 31：中线对齐底部搜索框(中线距底~49) */
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 14px; font:inherit; font-size:12.5px; color:var(--ink-soft); letter-spacing:.02em;
+    background:#fff; border:none; border-radius:9px;
+    cursor:pointer; transition:color .2s;
+  }
+  #conn-f:hover{color:var(--ink)}
+  /* 文件夹图标本身做状态指示：未连灰、已连绿、需重连朱砂 */
+  #conn-f .conn-ico{flex:none; color:#b3ac9f; transition:color .2s}
+  #conn-f.live{color:var(--ink)}
+  #conn-f.live .conn-ico{color:#4a9e6d}
+  #conn-f.stale .conn-ico{color:var(--accent)}
+  body.mode-discover #conn-f{display:none}
+
+  /* ════ 演示模式（Vercel / ?demo=1）：隐写盘/编辑动作，只留纯浏览功能 ════ */
+  html.demo #conn-f, html.demo #tray, html.demo #drop,
+  html.demo #plate-cal, html.demo #plate-trash, html.demo #trash-btn{ display:none !important; }
+  /* 下载 CTA — 品牌右侧、｜ 隔开（brand-group 内 in-flow；metaball 绝对居中不受影响） */
+  .brand-group{ display:flex; align-items:center }
+  #demo-cta{ display:none; }
+  html.demo #demo-cta{
+    display:inline-flex; align-items:center; margin-left:14px; white-space:nowrap;
+    font:inherit; font-size:12.5px; color:var(--ink-soft); letter-spacing:.02em;
+    cursor:pointer; text-decoration:none; transition:color .2s;
+  }
+  html.demo #demo-cta::before{ content:'｜'; color:var(--ink-faint); margin-right:12px; font-size:13px }
+  html.demo #demo-cta:hover{ color:var(--ink) }
+  #demo-cta b{ color:var(--accent); font-weight:600 }
+  html.demo #demo-cta:hover b{ text-decoration:underline }
+  /* 演示模式：图片免责声明 — 左下页脚，极淡、不抢 */
+  #demo-note{ display:none }
+  html.demo #demo-note{
+    display:block; position:fixed; left:22px; bottom:18px; z-index:43;
+    font-size:11px; color:var(--ink-faint); letter-spacing:.02em; pointer-events:none;
+  }
+  /* 已收气泡底部 → 漏斗：pitch + 去获取按钮 */
+  html.demo .pp-foot{ display:flex; flex-direction:column; gap:8px; align-items:stretch }
+  .pp-pitch{ font-size:11.5px; color:var(--ink-soft); line-height:1.55 }
+  .pp-get{ text-align:center; padding:8px 0; background:var(--accent); color:#fff; border-radius:7px; font-size:12px; text-decoration:none; letter-spacing:.02em; transition:opacity .15s }
+  .pp-get:hover{ opacity:.88 }
+
+  /* ── header 右上工具区：已收（产出）+ 回收站（软删可找回），共用样式 ── */
+  .head-tools{display:flex; align-items:center; gap:8px}
+  body.mode-discover .head-tools{display:none}
+  /* 全局控件系统：圆角 9px、无投影（投影只给搜索）；按重要度分档 */
+  .head-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    border:none; background:none; cursor:pointer;
+    font:inherit; font-size:12.5px; color:var(--ink-soft); letter-spacing:.02em;
+    padding:7px 12px; border-radius:9px; transition:color .2s, background .2s;
+  }
+  .head-btn b{font-variant-numeric:tabular-nums}
+  /* 已收 = 无底色文字 + chevron 指示展开态（展开时翻 180°）；hover/展开 转朱砂 */
+  #pick-btn{color:var(--ink); gap:5px}
+  #pick-btn b{color:var(--accent); font-weight:600; margin:0 1px}
+  #pick-btn:hover, #pick-btn.open{color:var(--accent)}
+  #pick-btn .chev{opacity:.5; transition:transform .25s, opacity .2s}
+  #pick-btn:hover .chev, #pick-btn.open .chev{opacity:.9}
+  #pick-btn.open .chev{transform:rotate(180deg)}
+  /* 已收下拉气泡：锚在已收钮下方；纯白+描边+blur，不靠投影 */
+  .ht-wrap{position:relative}
+  .pick-pop{
+    position:absolute; top:calc(100% + 9px); right:0; z-index:62; width:330px; max-height:62vh; overflow-y:auto;
+    background:rgba(255,255,255,.98); border:1px solid var(--pline); border-radius:13px; backdrop-filter:blur(12px);
+    padding:8px; display:none; flex-direction:column;
+  }
+  .pick-pop.on{display:flex}
+  .pp-head{display:flex; align-items:center; justify-content:space-between; font-size:11.5px; color:var(--ink-soft); padding:4px 6px 8px}
+  .pp-clear{border:none; background:none; cursor:pointer; font:inherit; font-size:11.5px; color:var(--ink-faint); padding:2px 4px}
+  .pp-clear:hover{color:var(--accent)}
+  .pp-foot{font-size:11px; color:var(--ink-faint); padding:9px 6px 2px; border-top:1px solid var(--line); margin-top:2px}
+  .pp-empty{font-size:12.5px; color:var(--ink-faint); text-align:center; padding:26px 12px; line-height:1.8}
+  /* 回收站 = 幽灵次级：裸 icon，hover 才出底色 + 数字（floema 搜索 icon 模式）*/
+  #trash-btn{display:none; color:var(--ink); padding:7px 9px}
+  #trash-btn.show{display:inline-flex}
+  #trash-btn svg{opacity:1}
+  #trash-btn b{display:none; color:var(--accent); margin-left:1px}
+  #trash-btn:hover{background:#fff; color:var(--ink)}
+  #trash-btn:hover b{display:inline}
+  /* ── 右侧拉面板：已收 / 回收站 共用（与 940 抽屉同种右滑语言；蒙层分隔、无投影）── */
+  #side-scrim{position:fixed; top:56px; left:0; right:0; bottom:0; z-index:54;
+    background:rgba(20,18,15,.40); opacity:0; pointer-events:none; transition:opacity .25s}
+  #side-scrim.on{opacity:1; pointer-events:auto}
+  #side{
+    position:fixed; top:56px; right:0; bottom:0; z-index:55; width:380px; max-width:88vw;
+    background:var(--card); border-left:1px solid var(--line);
+    display:flex; flex-direction:column;
+    transform:translateX(100%); visibility:hidden;
+    transition:transform .36s cubic-bezier(.16,1,.3,1), visibility 0s .36s;
+  }
+  #side.on{transform:none; visibility:visible; transition:transform .36s cubic-bezier(.16,1,.3,1)}
+  #side.wide{width:380px}   /* 回收站：2 列缩略图，窄面板 */
+  .side-head{display:flex; align-items:center; gap:8px; padding:15px 16px 12px; border-bottom:1px solid var(--line)}
+  .side-head .st{font-size:14px; font-weight:600; color:var(--ink); flex:none}
+  .side-head .sn{font-size:12px; color:var(--accent); font-variant-numeric:tabular-nums; flex:none}
+  .side-head .sub{flex:1; font-size:11px; color:var(--ink-faint); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .side-clear{border:none; background:none; cursor:pointer; font:inherit; font-size:12px; color:var(--ink-faint); padding:2px 4px; flex:none}
+  .side-clear:hover{color:var(--accent)}
+  .side-close{border:1px solid var(--line); background:var(--card); cursor:pointer; width:28px; height:28px; border-radius:8px; font-size:12px; color:var(--ink-soft); flex:none}
+  .side-close:hover{border-color:#cfc9bd; color:var(--ink)}
+  .side-body{flex:1; min-height:0; overflow-y:auto; padding:10px 12px 22px}
+  .side-foot{font-size:11px; color:var(--ink-faint); padding:10px 16px; border-top:1px solid var(--line)}
+  .side-empty{font-size:12.5px; color:var(--ink-faint); text-align:center; padding:46px 16px; line-height:1.8}
+  /* 已收：来源缩略 + 中英文 + 来自哪版（轻清单，无逐行盒子）*/
+  .pick-row{display:flex; align-items:center; gap:11px; padding:9px 6px; border-radius:9px; transition:background .15s}
+  .pick-row:hover{background:var(--paper2)}
+  .pick-row img{width:54px; height:40px; object-fit:cover; border-radius:6px; flex:none; border:1px solid var(--line)}
+  .pick-row .pr-txt{flex:1; min-width:0}
+  .pick-row .pr-zh{font-size:13.5px; color:var(--ink); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .pick-row .pr-en{font-size:11px; color:var(--ink-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px}
+  .pick-row .pr-src{font-size:11px; color:var(--ink-soft); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .pick-row .pr-src b{color:var(--accent); font-weight:500}
+  .pick-row .pr-x{flex:none; border:none; background:none; cursor:pointer; font-size:14px; color:var(--ink-faint); padding:4px 6px; align-self:flex-start}
+  .pick-row .pr-x:hover{color:var(--accent)}
+  /* 回收站：2 列大缩略图；恢复 = hover 浮在图上（画廊式，不再占整行）*/
+  .trash-grid{display:grid; grid-template-columns:1fr 1fr; gap:13px}
+  .trash-card{display:flex; flex-direction:column; gap:6px}
+  .tc-imgwrap{position:relative}
+  .trash-card .tc-img{display:block; width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:var(--paper2); transition:filter .15s}
+  .trash-card:hover .tc-img{filter:brightness(.6)}
+  .trash-card .tc-restore{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:none; align-items:center; white-space:nowrap;
+    border:none; cursor:pointer; font:inherit; font-size:12px; color:var(--ink);
+    background:rgba(255,255,255,.95); padding:6px 15px; border-radius:8px;
+  }
+  .trash-card:hover .tc-restore{display:inline-flex}
+  .trash-card .tc-restore:hover{color:var(--accent)}
+  .trash-card .tc-cap{font-size:11.5px; color:var(--ink-soft); line-height:1.4;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .trash-card .tc-cap b{color:var(--accent)}
+  /* 抽屉里的删除按钮（和校准成对）*/
+  .plate-trash{
+    border:none;background:none;cursor:pointer;color:var(--ink-faint);
+    padding:2px 6px;line-height:1;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;flex:none;
+  }
+  .plate-trash:hover{color:var(--accent)}
+
+  /* ── 入库托盘面板（⌘V/拖图 → _inbox；左下，浮在连接钮上方、沿底向上长；无投影）── */
+  #tray{
+    position:fixed; left:22px; bottom:72px; z-index:44; width:240px;
+    display:none; flex-direction:column; gap:9px; padding:12px;
+    background:rgba(255,255,255,.94); border:1px solid var(--pline); border-radius:13px;
+    backdrop-filter:blur(12px);
+  }
+  #tray.show{display:flex}
+  body.mode-discover #tray{display:none}
+  /* 空态：去掉卡片/按钮感，只剩一行淡提示 */
+  #tray.empty{background:none; border:none; backdrop-filter:none; padding:4px 2px; gap:0}
+  #tray.empty .tray-info{color:var(--ink-faint)}
+  #tray .tray-info{font-size:12px; color:var(--ink-soft); line-height:1.5}
+  #tray .tray-info b{color:var(--accent); font-variant-numeric:tabular-nums}
+  #tray .tray-info a{color:var(--accent); cursor:pointer; text-decoration:underline}
+  #tray .tray-info .sub{display:block; font-size:11px; color:var(--ink-faint); margin-top:3px; line-height:1.45}
+  #tray .tray-info .cmd{
+    background:var(--chip); border:1px solid var(--line); border-radius:6px;
+    padding:1px 6px; margin:0 1px; color:var(--ink); font-size:11px;
+  }
+  #tray-strip{display:flex; flex-wrap:wrap; gap:7px}
+  #tray-strip:empty{display:none}
+  .pend{
+    width:50px; height:50px; flex:none; border-radius:9px;
+    border:1px dashed #c9c3b6; background:#fff center/cover no-repeat;
+    position:relative; filter:grayscale(.4) opacity(.9);
+  }
+  .pend span{
+    position:absolute; left:0; right:0; bottom:0; border-radius:0 0 7px 7px;
+    font-size:9px; text-align:center; background:rgba(0,0,0,.55); color:#fff; padding:1px 0;
+  }
+  .pend .rm{
+    position:absolute; top:-6px; right:-6px; width:17px; height:17px; border-radius:50%;
+    border:none; background:var(--ink); color:#fff; font-size:9px; cursor:pointer;
+    display:none; align-items:center; justify-content:center; padding:0;
+  }
+  .pend:hover .rm{display:flex}
+  .pend .rm:hover{background:var(--accent)}
+  .pend.ing{filter:grayscale(.6) brightness(.62); animation:pend-pulse 1.5s ease-in-out infinite}
+  .pend.ing .rm{display:none!important}
+  .pend.ing::after{
+    content:''; position:absolute; top:50%; left:50%; width:18px; height:18px; margin:-9px 0 0 -9px;
+    border-radius:50%; border:2px solid rgba(255,255,255,.32); border-top-color:#fff;
+    animation:pend-spin .7s linear infinite;
+  }
+  @keyframes pend-spin{to{transform:rotate(360deg)}}
+  @keyframes pend-pulse{0%,100%{opacity:1}50%{opacity:.72}}
+  #ingest-go{
+    align-self:stretch; border:none; cursor:pointer; font:inherit; font-size:12.5px; font-weight:500;
+    color:#fff; background:var(--accent); padding:8px 16px; border-radius:10px; transition:.15s;
+  }
+  #ingest-go:hover{filter:brightness(1.08)}
+  #ingest-go:disabled{opacity:.55; cursor:default}
+  /* 全屏拖放暂存 overlay */
+  #drop{
+    position:fixed; inset:56px 0 0; z-index:120; display:none;
+    background:rgba(247,245,240,.92); align-items:center; justify-content:center; pointer-events:none;
+  }
+  #drop.on{display:flex}
+  #drop .box{
+    border:2.5px dashed var(--accent); border-radius:20px; padding:54px 84px;
+    font-size:24px; color:var(--accent); letter-spacing:.05em;
+  }
+
+  /* ── 940 抽屉器官（从 index.html 移植；段①只读查看 + 本地收存）── */
+  .scrim{
+    position:fixed;top:56px;left:0;right:0;bottom:0;z-index:48;pointer-events:none;
+    background:rgba(20,18,15,.42);opacity:0;transition:opacity .25s;
+  }
+  .scrim.on{opacity:1;pointer-events:auto}   /* z-48：盖住底部控件(连接/托盘/搜索 z44-45)，可点击关抽屉 */
+  .drawer{
+    position:fixed;top:56px;right:0;bottom:0;z-index:50;
+    width:min(940px,78%);
+    background:var(--card);border-left:1px solid var(--line);
+    border-radius:14px 0 0 14px;
+    box-shadow:-22px 0 52px rgba(0,0,0,.16);
+    display:grid;grid-template-columns:minmax(0,1fr) 350px;
+    transform:translateX(40px);opacity:0;visibility:hidden;
+    transition:transform .44s cubic-bezier(.16,1,.3,1),opacity .34s ease,width .3s ease,visibility 0s .44s;
+  }
+  .drawer.wide{width:min(1280px,92%)}
+  .drawer.on{transform:none;opacity:1;visibility:visible;
+    transition:transform .44s cubic-bezier(.16,1,.3,1),opacity .3s ease,width .3s ease}
+  .drawer-close{
+    position:absolute;top:14px;left:14px;z-index:6;
+    border:1px solid var(--line);background:var(--card);cursor:pointer;
+    width:30px;height:30px;border-radius:9px;font-size:12px;color:var(--ink-soft);
+  }
+  .drawer-close:hover{border-color:#cfc9bd;color:var(--ink)}
+  .stage{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 26px 16px;min-width:0;min-height:0;gap:12px;
+    background:var(--paper);border-radius:14px 0 0 14px;
+  }
+  .swatches{display:flex;gap:6px}
+  .sw{width:18px;height:18px;border-radius:6px;cursor:pointer;padding:0;
+    border:1px solid rgba(0,0,0,.10);transition:transform .12s}
+  .sw:hover{transform:scale(1.2)}
+  .plate-wrap{position:relative;flex:1;min-height:0;width:100%;
+    display:flex;align-items:center;justify-content:center}
+  .plate{display:inline-block;padding:8px;background:#fff;
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.10)}
+  .plate-inner{position:relative;display:block;margin:0 auto;line-height:0;
+    aspect-ratio:var(--ar,1.6);max-width:100%;max-height:calc(100vh - 56px - 84px - 120px)}
+  .plate img{display:block;width:100%;height:100%;border-radius:6px;
+    user-select:none;-webkit-user-drag:none}
+  .anchor{position:absolute;transform:translate(-50%,-50%);z-index:5;cursor:pointer}
+  .anchor .dot{
+    position:relative;z-index:2;width:21px;height:21px;border-radius:50%;
+    background:rgba(255,255,255,.96);border:1.6px solid var(--accent);
+    color:var(--accent);font-size:11.5px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 5px rgba(0,0,0,.18);
+    transition:transform .15s,background .15s,color .15s;
+    animation:anchor-breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes anchor-breathe{
+    0%{box-shadow:0 1px 5px rgba(0,0,0,.18),0 0 0 0 rgba(176,64,47,.38)}
+    70%{box-shadow:0 1px 5px rgba(0,0,0,.18),0 0 0 7px rgba(176,64,47,0)}
+    100%{box-shadow:0 1px 5px rgba(0,0,0,.18),0 0 0 0 rgba(176,64,47,0)}
+  }
+  .anchor .tag{
+    position:absolute;z-index:1;left:10px;top:50%;transform:translateY(-50%);
+    height:21px;display:flex;align-items:center;
+    background:var(--accent);color:#fff;white-space:nowrap;border-radius:0 11px 11px 0;
+    font-size:11.5px;padding:0 11px 0 18px;
+    max-width:0;opacity:0;overflow:hidden;pointer-events:none;
+    transition:max-width .26s cubic-bezier(.2,.8,.2,1),opacity .18s,padding .26s;
+  }
+  .anchor:hover{z-index:6}
+  .anchor.hot{z-index:6}
+  .anchor:hover .dot,.anchor.hot .dot{animation:none;transform:scale(1.1);background:var(--accent);color:#fff}
+  .anchor:hover .tag,.anchor.hot .tag{max-width:280px;opacity:1}
+  .anchor.picked .dot{background:var(--accent);color:#fff;animation:none}
+  .anchor.flip .tag{left:auto;right:10px;border-radius:11px 0 0 11px;padding:0 18px 0 11px}
+  .plate-caption{
+    font-size:12px;color:var(--ink-soft);display:flex;gap:10px;align-items:center;
+    font-variant-numeric:tabular-nums;flex-wrap:nowrap;
+  }
+  .plate-caption>span{white-space:nowrap;flex:none}
+  .plate-caption .cap-gap{flex:1 1 auto;min-width:8px}
+  .plate-caption .no{color:var(--accent);font-weight:600}
+  /* 校准模式：拖圆点改 at，松手写回 data-v3.js（移植自 index.html）*/
+  .plate-cal{
+    border:none;background:none;cursor:pointer;color:var(--ink-faint);
+    padding:2px 6px;line-height:1;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;flex:none;
+  }
+  .plate-cal:hover{color:var(--accent)}
+  .plate-cal.on{color:var(--accent);font-weight:600}
+  .plate.calibrating{outline:2px dashed rgba(176,64,47,.45);outline-offset:4px}
+  .anchor.cal{z-index:7}
+  .anchor.cal .dot{cursor:grab;animation:none;box-shadow:0 0 0 3px rgba(176,64,47,.22),0 2px 7px rgba(0,0,0,.28)}
+  .anchor.cal .dot:active{cursor:grabbing}
+  .nav-arrows{display:flex;gap:5px}
+  .nav-arrows button{
+    border:1px solid var(--line);background:var(--card);cursor:pointer;
+    font:inherit;font-size:13px;padding:3px 12px;border-radius:8px;color:var(--ink-soft);transition:.15s;
+  }
+  .nav-arrows button:hover{background:var(--ink);border-color:var(--ink);color:#fff}
+  .panel{border-left:1px solid var(--line);overflow-y:auto;padding:24px 22px 30px;min-height:0}
+  .panel-meta{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .panel h2{font-size:19px;font-weight:600;margin:6px 0 12px;line-height:1.4}
+  .feel-line{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:4px;
+  }
+  .feel-line .lab{font-size:12px;color:var(--ink-soft);margin-right:4px}
+  .feel-hint{width:100%;font-size:11.5px;color:var(--ink-faint);margin-top:6px}
+  .feel{border:1px solid var(--line);background:var(--paper);cursor:pointer;font:inherit;
+    font-size:12.5px;color:var(--ink);padding:3px 12px;border-radius:999px;transition:.15s}
+  .feel:hover{border-color:var(--accent);color:var(--accent);background:rgba(176,64,47,.06)}
+  .move{
+    display:grid;grid-template-columns:28px 1fr auto;gap:3px 10px;
+    padding:14px 6px 13px 2px;border-bottom:1px solid var(--line);
+    cursor:pointer;align-items:center;
+  }
+  .move:hover,.move.hot{background:var(--paper)}
+  .move .num{
+    grid-row:span 3;font-size:12px;font-weight:600;color:var(--accent);
+    border:1.5px solid var(--accent);border-radius:50%;
+    width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+    align-self:start;margin-top:4px;font-variant-numeric:tabular-nums;
+  }
+  .move.picked .num{background:var(--accent);color:#fff}
+  .move .zh{font-size:14.5px;font-weight:600}
+  .move .acts{display:flex;align-items:center;gap:5px;white-space:nowrap;justify-self:end}
+  .move .act{
+    width:26px;height:26px;padding:0;border-radius:7px;
+    border:1px solid var(--line);background:var(--card);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    color:var(--ink-soft);text-decoration:none;transition:.15s;
+  }
+  .move .act:hover{border-color:#cfc9bd;color:var(--ink)}
+  .move .act.pick.on{background:rgba(176,64,47,.10);border-color:var(--accent);color:var(--accent)}
+  .move .en{grid-column:2/4;font-size:12px;color:var(--ink-soft)}
+  .move .mech{grid-column:2/4;font-size:12.5px;line-height:1.7;color:var(--ink-soft);margin-top:2px}
+  .toast{
+    position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:200;
+    background:var(--ink);color:#fff;border-radius:10px;
+    font-size:13px;padding:9px 16px;display:none;max-width:80vw;text-align:center;
+  }
+  .toast.on{display:block}
+
+  /* ════════ 模式 B：找灵感（demo-e 瀑布流）════════ */
+  #mode-discover{position:relative; --mx:-300px; --my:-300px; --er:88px}  /* 橡皮擦坐标/半径，背景网格+墨层共享 */
+  /* 背景网格：12 列线格网（--col/--gx 由 JS 按内容列对齐），随内容滚动 */
+  .grid-bg{position:absolute; inset:0; z-index:0; pointer-events:none;
+    --gl:rgba(120,104,70,.16);
+    background-image:
+      linear-gradient(90deg, var(--gl) .6px, transparent .6px),
+      linear-gradient(0deg,  var(--gl) .6px, transparent .6px);
+    background-size: var(--col,89px) var(--col,89px);
+    background-position: var(--gx,0) var(--gy,0);   /* 行原点对齐第一个模块顶（JS 设 --gy）*/
+    -webkit-mask-image:radial-gradient(circle var(--er) at var(--mx) var(--my), transparent 0, transparent 52%, #000 100%);
+    mask-image:radial-gradient(circle var(--er) at var(--mx) var(--my), transparent 0, transparent 52%, #000 100%)}
+  /* 墨层（在文字之下、网格之上）：每个格子的「纸底填充 + 框 + 四角细十字」都画这（JS 按各格位置生成），与背景网格共用同一橡皮擦 → 擦线不碰文字 */
+  .ink{position:absolute; inset:0; z-index:1; pointer-events:none; overflow:visible;
+    -webkit-mask-image:radial-gradient(circle var(--er) at var(--mx) var(--my), transparent 0, transparent 52%, #000 100%);
+    mask-image:radial-gradient(circle var(--er) at var(--mx) var(--my), transparent 0, transparent 52%, #000 100%)}
+  .ink rect{fill:var(--paper); stroke:var(--line); stroke-width:1}   /* 纸底盖住格内网格 + 描边 */
+  .ink path{fill:none; stroke:var(--ink-faint); stroke-width:1}      /* 四角十字 */
+  .wrap{max-width:1180px; margin:0 auto; padding:0 56px; position:relative; z-index:2}
+  /* 文字格：透明浮在墨层之上（纸底/框由墨层提供），文字本身不被橡皮擦碰 */
+  .cell{position:relative}
+
+  /* hero 模块 = 模数栅格（12 列 × 方格行）；eyebrow 自由，标题进描边格子（咬合网格） */
+  .hero{display:grid; grid-template-columns:repeat(12,1fr); grid-auto-rows:var(--col,89px); margin-top:var(--col,89px)}
+  .hero .eyebrow{grid-column:1/6; grid-row:1; align-self:center; display:inline-flex; align-items:center; gap:11px; font-family:var(--mono); font-size:11.5px; color:var(--accent); letter-spacing:.24em; text-transform:uppercase}
+  .hero .eyebrow::before{content:''; width:26px; height:1px; background:var(--accent); opacity:.55}
+  .hero .title-cell{grid-column:1/9; grid-row:2/4; display:flex; align-items:center; padding:0 38px}  /* 标题描边格子（8 列 × 2 行）*/
+  .hero h1{margin:0; font-family:var(--serif); font-weight:600; font-size:64px; line-height:1.1; letter-spacing:.01em; color:var(--ink)}
+  .hero p{grid-column:1/9; grid-row:4; align-self:center; font-size:15.5px; color:var(--sub); line-height:1.6; white-space:nowrap}
+  .hero p b{color:var(--ink); font-weight:600}
+
+  .zone{padding:64px 0 8px}
+  .zone-head{display:flex; align-items:baseline; gap:16px; padding-bottom:8px}  /* 去下划线：和格网打架 */
+  .zone-head h3{font-family:var(--serif); font-size:25px; font-weight:600; letter-spacing:.01em}
+  .zone-head .cnt{font-family:var(--mono); font-size:11.5px; color:var(--sub); letter-spacing:.08em}
+  .zone-head .ln{flex:1}
+  /* 分组小标签：单站里「品牌站 N / 作品集 N」的信息点 */
+  .zone-head .grp-inline{font-family:var(--mono); font-size:11.5px; color:var(--sub); letter-spacing:.06em; margin-left:6px}
+  .zone-head .grp-inline b{color:var(--accent); font-weight:600}
+
+  /* editorial 行 */
+  /* 综合行 = 12 列栅格：图块占 6 列、文字格占 5 列（中间留 1 列做栏间格线），偶数行左右互换 */
+  .row{display:grid; grid-template-columns:repeat(12,1fr); align-items:center; padding:54px 0}
+  .shot{grid-column:1/7; grid-row:1; display:block; padding:16px; background:var(--board); border-radius:4px}
+  .info{grid-column:8/13; grid-row:1; padding:30px 32px}  /* 文字格内距：文字离边有距离 */
+  .row:nth-of-type(even) .shot{grid-column:7/13}
+  .row:nth-of-type(even) .info{grid-column:1/6}
+  .frame{position:relative; aspect-ratio:4/3; overflow:hidden; background:#fff; border:1px solid rgba(26,26,24,.07); border-radius:2px}
+  .frame img, .frame .mv{width:100%; height:100%; object-fit:cover; object-position:top center; display:block}
+  .veil{position:absolute; inset:0; background:rgba(22,20,18,.64); opacity:0; transition:opacity .3s;
+        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:11px; color:#fff; text-align:center; padding:22px}
+  .row .shot:hover .veil, .art:hover .veil, .mcard:hover .veil{opacity:1}
+  .veil .vk{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; opacity:.85}
+  .veil .vn{font-family:var(--serif); font-size:24px; font-weight:600; line-height:1.12}
+  .veil .vd{font-size:12.5px; line-height:1.55; opacity:.85; max-width:82%;
+            display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+  .veil .vh{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; opacity:.62}
+  .veil .vgo{font-family:var(--mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-top:4px; padding:9px 18px; border:1px solid rgba(255,255,255,.72); border-radius:2px}
+  .mcard .veil{gap:9px; padding:18px} .mcard .veil .vd{-webkit-line-clamp:4; font-size:12px}
+  .art .veil{gap:8px; padding:16px} .art .veil .vn{font-size:20px} .art .veil .vd{-webkit-line-clamp:2; font-size:12px; max-width:90%}
+  /* 小画框（上架小图 + 钉墙招贴）：hover 文字按比例缩小，去掉 host，desc 收一行 */
+  .art--sm .veil, .pin .veil{gap:5px; padding:11px}
+  .art--sm .veil .vk, .pin .veil .vk{font-size:9px; letter-spacing:.1em}
+  .art--sm .veil .vn, .pin .veil .vn{font-size:14px; line-height:1.1}
+  .art--sm .veil .vd, .pin .veil .vd{font-size:10.5px; -webkit-line-clamp:2; line-height:1.4}
+  .art--sm .veil .vh, .pin .veil .vh{display:none}
+  .art--sm .veil .vgo, .pin .veil .vgo{font-size:9.5px; padding:6px 12px; margin-top:2px}
+  .info{flex:1; min-width:0}
+  .tagline{font-family:var(--mono); font-size:11.5px; color:var(--sub); letter-spacing:.1em; text-transform:uppercase; display:flex; gap:12px}
+  .tagline .no{color:var(--accent)}
+  .info h2{font-family:var(--serif); font-weight:600; font-size:36px; line-height:1.1; letter-spacing:.01em; margin:14px 0 0}
+  .info .host{font-family:var(--mono); font-size:12px; color:var(--sub); margin-top:8px}
+  .info .desc{font-size:14.5px; color:#5f5a51; line-height:1.75; margin-top:16px; max-width:42ch}
+  .info .desc::first-letter{font-family:var(--serif); font-size:2.8em; font-weight:600; float:left; line-height:.82; padding:6px 10px 0 0}
+  .info .visit{display:inline-flex; gap:9px; margin-top:24px; font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; padding:11px 20px; border:1px solid var(--ink); border-radius:2px; transition:background .2s,color .2s}
+  .visit:hover{background:var(--ink); color:#fff}
+
+  /* 作品集：美术馆画廊搁板 */
+  .shelf{position:relative; margin:32px 0 4px}
+  /* 左右各内缩 4.5% 对齐木板顶面（ltop 梯形 4.5%→95.5%），书不探出板沿 */
+  .shelf-row{display:flex; align-items:flex-end; justify-content:center; position:relative; z-index:2; padding:0 4.5%}
+  .ledge + .shelf-row{margin-top:46px}
+  .art{position:relative; flex:0 0 auto; transition:transform .38s cubic-bezier(.2,.7,.3,1)}
+  /* 光从右来：画框投影只打正左边、下方不投（坐在搁板上而非悬空） */
+  .art .print{padding:9px; background:#fffdf8; border:1px solid rgba(52,42,26,.16); border-radius:2px;
+              box-shadow:-9px 2px 14px -7px rgba(56,50,44,.20), -2px 1px 4px rgba(56,50,44,.11)}
+  .art--sm .print{padding:6px; border-color:rgba(52,42,26,.10)}   /* 小图：边框/卡纸更细 */
+  .art .frame{aspect-ratio:16/10}
+  .art--side{width:30%}
+  .art--feat{width:39%; z-index:5}
+  /* 下方接触阴影已移除：画框坐在搁板上，下方不投影（只留左侧投影） */
+  .ledge{position:relative; margin-top:-4px}
+  .ledge .ltop{display:block; height:17px;
+               background:linear-gradient(#e7d9bd,#eee3cb);
+               clip-path:polygon(4.5% 0,95.5% 0,100% 100%,0 100%);
+               box-shadow:inset 0 -1px 2px rgba(120,96,56,.10)}
+  .ledge .lface{display:block; height:17px; border-radius:0 0 5px 5px;
+                background:linear-gradient(#fdf6e6,#f5ecd6); border:1px solid rgba(82,64,36,.16); border-top:none;
+                box-shadow:-4px 15px 22px -13px rgba(56,50,44,.22), inset 0 1px 0 rgba(255,255,255,.85)}
+  .art:hover{transform:translateY(-11px) rotate(0deg); z-index:30}
+  .art:hover .print{box-shadow:-15px 9px 30px -10px rgba(56,50,44,.26), -3px 3px 8px rgba(56,50,44,.13)}
+
+  /* 品牌站：钉墙（每框一条倒 V 挂绳 + 朱砂图钉，落地页=招贴的体裁） */
+  .wall{position:relative; margin:8px 0 84px; padding-top:36px}  /* 品牌站↔作品集 间距再加大 */
+  .pin-row{display:flex; justify-content:center; align-items:flex-start; gap:6%; position:relative; z-index:2}
+  .pin{position:relative; flex:0 0 auto; width:25%; transform-origin:top center;
+       transition:transform .38s cubic-bezier(.2,.7,.3,1)}
+  .pin--l{transform:rotate(-1.5deg)}
+  .pin--r{transform:rotate(1.3deg)}
+  /* 倒 V 挂绳：两端落在画框左上/右上角，折点顶在图钉上 */
+  .pin .cord{position:absolute; top:-30px; left:0; width:100%; height:30px; z-index:1; overflow:visible}
+  .pin .cord polyline{fill:none; stroke:rgba(120,96,56,.5); stroke-width:1.3;
+                      vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round}
+  .pin .print{padding:7px; background:#fffdf8; border:1px solid rgba(52,42,26,.12); border-radius:2px;
+              box-shadow:-7px 9px 17px -8px rgba(56,50,44,.24), -1px 2px 4px rgba(56,50,44,.11)}
+  .pin .tack{position:absolute; top:-35px; left:50%; width:14px; height:14px; margin-left:-7px; border-radius:50%; z-index:5;
+             background:radial-gradient(circle at 38% 30%, #e07a5f 0%, var(--accent) 55%, #822a1e 100%);
+             box-shadow:0 2px 4px rgba(60,20,12,.42), inset 0 1px 1.5px rgba(255,255,255,.55)}
+  .art.pin:hover{transform:rotate(0deg) translateY(-3px); z-index:30}
+  .art.pin:hover .print{box-shadow:-12px 15px 28px -10px rgba(56,50,44,.26), -2px 4px 9px rgba(56,50,44,.13)}
+
+  /* 专项区：紧凑小卡网格 */
+  .mini{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:32px; padding:38px 0 0}
+  .mcard .shot{flex:none; padding:12px}
+  .mcard .frame{aspect-ratio:16/10}
+  .mcard .mtag{font-family:var(--mono); font-size:10.5px; color:var(--accent); letter-spacing:.12em; text-transform:uppercase; margin-top:13px}
+  .mcard .mname{font-family:var(--serif); font-size:18px; font-weight:600; margin-top:6px}
+  .mcard .mhost{font-family:var(--mono); font-size:11px; color:var(--sub); margin-top:5px}
+  #mode-discover .wrap{padding-bottom:80px}
+  @media(max-width:820px){
+    .wrap{padding:0 24px} .hero h1{font-size:38px} .hero p{white-space:normal}
+    .hero{width:auto}
+    .row{grid-template-columns:1fr; gap:22px; align-items:stretch; padding:40px 0}
+    .shot,.info,.row:nth-of-type(even) .shot,.row:nth-of-type(even) .info{grid-column:1/-1}
+    .info h2{font-size:28px}
+    .shelf-row{flex-direction:column; align-items:stretch; gap:30px}
+    .art,.art--side,.art--feat,.art--l,.art--r{width:auto !important; transform:none !important; margin:0 !important}
+    .ledge{display:none}
+  }
+</style>
+</head>
+<body class="mode-canvas">
+
+<header class="shell-head">
+  <div class="brand-group">
+  <a class="brand" href="#" onclick="return false" title="灵感库 — 把感觉翻译给 AI">
+    <svg class="brand-mark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.4 L21.2 12 L12 21.6 L2.8 12 Z" fill="none" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M2.8 12 H21.2 M12 2.4 V21.6" stroke="#1a1a1a" stroke-width="0.9" opacity=".4"/>
+      <path d="M12 2.4 L21.2 12 L12 12 Z" fill="#b0402f"/>
+    </svg>
+    <span class="brand-name">灵感<b>库</b></span>
+  </a>
+    <a id="demo-cta" href="#" target="_blank" rel="noopener"></a>
+  </div>
+  <!-- 顶部切换：JS 实时算 SVG path metaball（floema 真方案）— rest 两胶囊相接、hover 拉丝长颈、脆角 -->
+  <div class="seg" id="seg">
+    <svg class="seg-svg" id="seg-svg" viewBox="0 0 165 36" aria-hidden="true">
+      <defs>
+        <radialGradient id="seg-glow-grad">
+          <stop offset="0%" stop-color="#b0402f" stop-opacity="0.18"/>
+          <stop offset="50%" stop-color="#b0402f" stop-opacity="0.07"/>
+          <stop offset="100%" stop-color="#b0402f" stop-opacity="0"/>
+        </radialGradient>
+        <clipPath id="seg-clip"><path id="seg-clip-path"></path></clipPath>
+      </defs>
+      <path id="seg-path"></path>
+      <circle id="seg-glow" r="27" fill="url(#seg-glow-grad)" opacity="0" clip-path="url(#seg-clip)"></circle>
+    </svg>
+    <button class="lobe on" data-mode="canvas"><span class="seg-lbl">读灵感<span class="seg-dot"></span></span></button>
+    <button class="lobe" data-mode="discover"><span class="seg-lbl">找灵感<span class="seg-dot"></span></span></button>
+  </div>
+
+  <!-- 右上工具区：已收（产出 → 给「转译」，下拉气泡）+ 回收站（软删可找回，右侧图廊面板）-->
+  <div class="head-tools">
+    <span class="ht-wrap">
+      <button class="head-btn" id="pick-btn" title="已收的手法 — 给「转译」用">已收 <b id="pick-n">0</b><svg class="chev" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="pick-pop" id="pick-pop">
+        <div class="pp-head"><span>已收的手法 · 给「转译」用</span><button class="pp-clear" id="pick-clear">清空</button></div>
+        <div class="pp-body" id="pick-chips"></div>
+        <div class="pp-foot">这些写进 _desk.json，「转译」直接读</div>
+      </div>
+    </span>
+    <button class="head-btn" id="trash-btn" title="回收站 — 恢复删除的图"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 4.2h10M6.4 4.2V3c0-.4.3-.7.7-.7h1.8c.4 0 .7.3.7.7v1.2M4.4 4.2l.5 8c0 .5.4.8.8.8h4.6c.4 0 .8-.3.8-.8l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><b id="trash-n">0</b></button>
+  </div>
+</header>
+
+<!-- 右侧拉面板：已收 / 回收站 共用 -->
+<div id="side-scrim"></div>
+<aside id="side">
+  <div class="side-head">
+    <span class="st" id="side-title">已收</span><span class="sn" id="side-n">0</span>
+    <span class="sub" id="side-sub"></span>
+    <button class="side-clear" id="side-clear">清空</button>
+    <button class="side-close" id="side-close" title="关闭 esc">✕</button>
+  </div>
+  <div class="side-body" id="side-body"></div>
+  <div class="side-foot" id="side-foot"></div>
+</aside>
+
+<!-- ════════ 模式 A：画布（引力场）════════ -->
+<section id="mode-canvas" class="mode on">
+  <canvas id="cv"></canvas>
+  <div id="summon">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#8a8478" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="#8a8478" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <input id="q" placeholder="说出你要的感觉——安静 / 典藏 / 冲击力 …" autocomplete="off">
+    <span class="n" id="qn"></span>
+    <button class="x" id="qx">✕</button>
+  </div>
+  <div id="fbar"></div>
+  <div id="hint"><span class="ht">单击一张图看拆解 · 输入或点感觉词召唤同类 · 滚轮缩放 · 拖拽漫游</span><span class="hq">?</span></div>
+
+  <!-- 磁盘桥连接钮（段②；左下独立）— 连一次，收的手法落 _desk.json 供「转译」读 -->
+  <button id="conn-f" title="连接灵感库文件夹 — 收的手法才能写入 _desk.json 给「转译」用"><svg class="conn-ico" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 4.4c0-.6.4-1 1-1h2.9l1.2 1.4h6c.6 0 1 .4 1 1v5.9c0 .6-.4 1-1 1H2.6c-.6 0-1-.4-1-1V4.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span id="conn-f-txt">连接</span></button>
+
+  <!-- 入库托盘面板（⌘V/拖图 → _inbox；左下、浮在连接钮上方）— 攒图，点「入库」写 .go 标记触发 watcher -->
+  <div id="tray">
+    <div class="tray-info" id="tray-info">待入库 <b>0</b> 张 · <span class="cmd">⌘V</span> 粘贴或拖图进来</div>
+    <div id="tray-strip"></div>
+    <button id="ingest-go" style="display:none">入库</button>
+  </div>
+  <div id="drop"><div class="box">松手暂存入库</div></div>
+
+  <!-- 演示模式：图片版权免责声明（左下页脚，仅 html.demo 显示）-->
+  <div id="demo-note"></div>
+
+  <!-- 940 抽屉（双击图打开）+ 蒙层 + toast -->
+  <div class="scrim" id="scrim"></div>
+  <div class="drawer" id="drawer">
+    <button class="drawer-close" id="close-drawer" title="关闭 esc">✕</button>
+    <div class="stage">
+      <div class="plate-wrap"><figure class="plate" id="plate"></figure></div>
+      <div class="swatches" id="swatches"></div>
+      <div class="plate-caption" id="plate-caption"></div>
+    </div>
+    <aside class="panel" id="panel"></aside>
+  </div>
+  <div class="toast" id="toast"></div>
+</section>
+
+<!-- ════════ 模式 B：找灵感（瀑布流）════════ -->
+<section id="mode-discover" class="mode">
+  <div class="grid-bg" aria-hidden="true"></div>
+  <svg class="ink" aria-hidden="true"></svg>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">找灵感 · 上游</div>
+      <div class="title-cell cell">
+        <h1>灵感卡顿，<br>先去逛逛</h1>
+      </div>
+      <p>私藏的设计参考网站。<b>从综合参考到真实页面</b>，日常漫游，不定时更新……</p>
+    </section>
+    <main id="main"></main>
+  </div>
+</section>
+
+<script src="data-v3.js"></script>
+
+<!-- ── 演示模式判定（Vercel 部署 / 本地 ?demo=1 测试）── -->
+<script>
+  window.REPO_URL = 'https://github.com/pxx-design/facet';
+  // 演示模式额外排除的图 id：软删只存浏览器 localStorage、部署不带 → 在这里 baked 进 demo。⚠️ 待填 trashed 清单。
+  window.DEMO_TRASHED = [];
+  window.FACET_DEMO = window.FACET_DEMO === true
+    || /\.vercel\.app$/.test(location.hostname)
+    || /\.pages\.dev$/.test(location.hostname)
+    || new URLSearchParams(location.search).has('demo');
+  if(window.FACET_DEMO) document.documentElement.classList.add('demo');
+</script>
+
+<!-- ── 画布引擎（demo-d 引力场，沿用；加 pause/resume 供模式切换）── -->
+<script>
+(()=>{
+  const DATA = window.LIBRARY;
+  // 回收站里的图彻底退出布局（不进 items/归一化/感觉词重心）——重载后画面按你留下的那批重铺
+  const _saved0=(()=>{ try{return JSON.parse(localStorage.getItem('lingganku.v3'))||{}}catch(e){return {}} })();
+  const _trashed0=new Set(_saved0.trashed||[]);
+  if(window.FACET_DEMO) (window.DEMO_TRASHED||[]).forEach(id=>_trashed0.add(id));   // 演示模式：永久排除已策展掉的图（不依赖 localStorage，感觉词自动跟着不显）
+  const KEPT = DATA.filter(e=>!_trashed0.has(e.id));
+  const $ = s=>document.querySelector(s);
+  const cv=$('#cv'), ctx=cv.getContext('2d');
+  const DPR=Math.min(2, window.devicePixelRatio||1);
+  let W=0,H=0;
+  function fit(){
+    W=innerWidth; H=innerHeight;
+    cv.width=W*DPR; cv.height=H*DPR;
+    cv.style.width=W+'px'; cv.style.height=H+'px';
+  }
+  fit(); addEventListener('resize', fit);
+
+  /* ── 世界：感觉地图语义坐标系 ── */
+  const WW=2200, WH=1300;
+  const FEEL_POS = {
+    轻盈:[30,8],  梦幻:[16,18], 柔和:[22,32], 自然:[36,22], 安静:[14,46], 沉浸:[44,38],
+    玩味:[68,13], 未来:[58,28], 能量:[84,20], 冲击力:[80,45], 精致:[34,60], 典藏:[20,72],
+    仪式感:[38,82], 神秘:[54,87], 警觉:[89,72], 科技:[73,64], 冷静:[58,57], 严谨:[70,82]
+  };
+  const wx=v=>v/100*WW, wy=v=>v/100*WH;
+
+  function feelsOf(e){   // 感觉仍用于「召唤/搜索层」，只是不再当底图地理
+    const m=new Map();
+    e.facets.forEach(f=>f.feels.forEach(w=>m.set(w,(m.get(w)||0)+1)));
+    return m;
+  }
+  /* ── 底图地理 = 色温(暖↔冷) × 明暗(亮↔暗)：眼睛能从缩略图直接验证的维度，秒懂不用学 ──
+     感觉降级为召唤层（搜索框输入→命中图聚拢），不再决定位置。色值取每张 swatch 调色板均值。 */
+  function hexRGB(h){ h=(h||'').replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
+    const n=parseInt(h,16); return (h.length===6 && !isNaN(n)) ? [(n>>16)&255,(n>>8)&255,n&255] : null; }
+  function colorMetrics(e){
+    const cs=(e.colors||[]).map(hexRGB).filter(Boolean);
+    if(!cs.length) return {temp:0, bright:50};
+    let r=0,g=0,b=0; cs.forEach(c=>{r+=c[0];g+=c[1];b+=c[2];}); const n=cs.length; r/=n;g/=n;b/=n;
+    return {temp:r-b, bright:(0.299*r+0.587*g+0.114*b)/255*100};   // 暖(+)↔冷(−)；明度 0..100
+  }
+  const _metric=new Map(DATA.map(e=>[e.id, colorMetrics(e)]));
+  let tMin,tMax,bMin,bMax;
+  function pct(arr,q){ const s=[...arr].sort((a,b)=>a-b); const i=(s.length-1)*q, lo=Math.floor(i), hi=Math.ceil(i); return s[lo]+(s[hi]-s[lo])*(i-lo); }
+  function recomputeNorm(entries){   // 按分位(非 min/max)定范围：离群值不独占极边、主体铺满；只按留下的图
+    const ms=entries.map(e=>_metric.get(e.id)), ts=ms.map(m=>m.temp), bs=ms.map(m=>m.bright);
+    const Q=0.06;
+    tMin=pct(ts,Q); tMax=pct(ts,1-Q); bMin=pct(bs,Q); bMax=pct(bs,1-Q);
+    if(tMax-tMin<1){ tMin=Math.min(...ts); tMax=Math.max(...ts); }
+    if(bMax-bMin<1){ bMin=Math.min(...bs); bMax=Math.max(...bs); }
+  }
+  recomputeNorm(KEPT);
+  const PAD=170, SPREAD=0.72;   // SPREAD<1：整体往中心收（A 收紧云团：0.84→0.72 更密更稳）
+  function homePos(e){
+    const m=_metric.get(e.id)||{temp:0,bright:50};
+    let xN = tMax>tMin ? (m.temp-tMin)/(tMax-tMin) : .5;     // 0 最暖 → 1 最冷
+    let yN = bMax>bMin ? (m.bright-bMin)/(bMax-bMin) : .5;   // 0 最暗 → 1 最亮
+    xN=Math.max(0,Math.min(1,xN)); yN=Math.max(0,Math.min(1,yN));   // 离群值裁到边界内
+    const fx=PAD+(1-xN)*(WW-2*PAD), fy=PAD+(1-yN)*(WH-2*PAD);
+    return [ WW/2+(fx-WW/2)*SPREAD,    // 暖→左、冷→右
+             WH/2+(fy-WH/2)*SPREAD ];  // 亮→上、暗→下
+  }
+  function placeItem(it){   // 按当前归一化重算色彩落点（删图后重排复用）
+    let [hx,hy]=homePos(it.e);
+    hx+=((it.seed*53)%17)-8; hy+=((it.seed*31)%17)-8;   // 抖动 ±30→±8：去噪、不那么散
+    it.hx=Math.max(it.w/2+30, Math.min(WW-it.w/2-30, hx));
+    it.hy=Math.max(it.h/2+30, Math.min(WH-it.h/2-30, hy));
+  }
+
+  /* ── 实体 ── */
+  function makeItem(e, fake, fi){
+    const seed=parseInt(e.id,10)+(fi||0)*97;
+    const ar=e.ar||1;
+    let w=Math.sqrt(20000*ar), h=w/ar;
+    const s=Math.max(w/260,h/190,1); w/=s; h/=s;
+    let [hx,hy]=homePos(e);
+    if(fake){ hx+=((seed*53)%900)-450; hy+=((seed*31)%560)-280; }
+    else    { hx+=((seed*53)%17)-8;  hy+=((seed*31)%17)-8; }   // 抖动 ±8
+    hx=Math.max(w/2+30,Math.min(WW-w/2-30,hx));
+    hy=Math.max(h/2+30,Math.min(WH-h/2-30,hy));
+    return {e, fake:!!fake, seed, w, h, hx, hy, x:hx, y:hy, tx:hx, ty:hy,
+            s:1, ts:1, dly:0, feels:feelsOf(e)};
+  }
+  const items = KEPT.map(e=>makeItem(e));   // 只为留下的图建实体，回收站的图不占位、不挤布局
+  function relax(arr){   // 去重叠（只调 hx/hy，不动 x/tx，供初始化与删后重排复用）
+    for(let p=0;p<160;p++){
+      let moved=false;
+      for(let a=0;a<arr.length;a++) for(let b=a+1;b<arr.length;b++){
+        const A=arr[a],B=arr[b];
+        const mX=(A.w+B.w)/2+20, mY=(A.h+B.h)/2+20;
+        const dx=B.hx-A.hx, dy=B.hy-A.hy;
+        if(Math.abs(dx)<mX && Math.abs(dy)<mY){
+          moved=true;
+          const ox=mX-Math.abs(dx), oy=mY-Math.abs(dy);
+          if(ox<oy){ const s=(dx>=0?1:-1)*ox/2; A.hx-=s; B.hx+=s; }
+          else     { const s=(dy>=0?1:-1)*oy/2; A.hy-=s; B.hy+=s; }
+        }
+      }
+      if(!moved) break;
+    }
+  }
+  relax(items);
+  items.forEach(it=>{ it.x=it.tx=it.hx; it.y=it.ty=it.hy; });   // 初始：直接落位
+
+  const imgs={};
+  DATA.forEach(e=>{ const im=new Image(); im.src=''+e.thumb; imgs[e.id]=im; });
+
+  const glows={};
+  function glow(color){
+    if(glows[color]) return glows[color];
+    const g=document.createElement('canvas'); g.width=g.height=96;
+    const c=g.getContext('2d');
+    const gr=c.createRadialGradient(48,48,2,48,48,46);
+    gr.addColorStop(0,color+'cc'); gr.addColorStop(.4,color+'55'); gr.addColorStop(1,color+'00');
+    c.fillStyle=gr; c.fillRect(0,0,96,96);
+    return glows[color]=g;
+  }
+
+  // 感觉词标签：落在「拥有该感觉的图」在色彩布局里的重心——可点召唤，
+  // 且顺带显示这种感觉聚在色彩空间哪片（位置由色彩定、文字给感觉，两者并存）
+  function buildWords(src){
+    const wc={}; src.forEach(it=>it.feels.forEach((c,w)=>wc[w]=(wc[w]||0)+c));
+    const ws=Object.keys(wc).map(w=>{
+      let sx=0,sy=0,n=0;
+      src.forEach(it=>{ if(it.feels.has(w)){ sx+=it.hx; sy+=it.hy; n++; } });
+      return {w, x:sx/n, y:sy/n, n:wc[w]};
+    });
+    // 标签互斥：拉开重叠的感觉词（多数都平均到中心附近，不拉开会挤成一坨读不清）
+    const MIN=200;
+    for(let p=0;p<140;p++){ let moved=false;
+      for(let a=0;a<ws.length;a++) for(let bb=a+1;bb<ws.length;bb++){
+        const A=ws[a],B=ws[bb]; let dx=B.x-A.x, dy=B.y-A.y, d=Math.hypot(dx,dy)||1;
+        if(d<MIN){ moved=true; const push=(MIN-d)/2; dx/=d; dy/=d; A.x-=dx*push; A.y-=dy*push; B.x+=dx*push; B.y+=dy*push; }
+      }
+      if(!moved) break;
+    }
+    return ws;
+  }
+  let words = buildWords(items);
+
+  const cam={x:WW/2, y:WH/2, z:.45};
+  const ct ={x:WW/2, y:WH/2, z:.45};
+  const smooth=(v,a,b)=>Math.max(0,Math.min(1,(v-a)/(b-a)));
+
+  let focus=null, activeFacet=null, summon=null, stressOn=false, fakes=null;
+  let hover=null, dragging=null, lastT=performance.now(), fpsE=60, wordHit=[];
+
+  function doSummon(q){
+    q=q.trim();
+    if(!q){ clearSummon(); return; }
+    const toks=q.toLowerCase().split(/[\s,，、]+/).filter(Boolean);
+    const all=visibleItems();
+    const scored=[];
+    all.forEach(it=>{
+      let sc=0;
+      it.feels.forEach((c,w)=>toks.forEach(t=>{
+        if(w.includes(t)||t.includes(w)) sc+=3*c;
+        else if([...t].some(ch=>w.includes(ch))) sc+=c;
+      }));
+      it.e.facets.forEach(f=>toks.forEach(t=>{
+        if(f.zh.includes(t)) sc+=2;
+        if((f.en+' '+(f.q||'')).toLowerCase().includes(t)) sc+=2;
+      }));
+      if(sc>0) scored.push([sc,it]);
+    });
+    scored.sort((a,b)=>b[0]-a[0]);
+    const lit=new Set(scored.map(s=>s[1]));
+    const cx=ct.x, cy=ct.y;
+    const maxSc = scored.length? scored[0][0] : 1;
+    let ring=0, slot=0, cap=1, R=0;
+    scored.forEach(([sc,it],i)=>{
+      if(slot>=cap){ ring++; slot=0; cap=ring*7; }
+      R=ring===0?0: ring*300;
+      const a=ring===0?0: (slot/cap)*Math.PI*2 + ring*.6;
+      it.tx=cx+Math.cos(a)*R*1.25; it.ty=cy+Math.sin(a)*R*.85;
+      it.dly=performance.now()+i*40;
+      it.ts = 0.82 + 0.55*(sc/maxSc);
+      slot++;
+    });
+    all.forEach(it=>{ if(!lit.has(it)){ it.tx=it.hx; it.ty=it.hy; it.ts=1; it.dly=performance.now()+Math.random()*200; }});
+    summon={q,lit,n:scored.length};
+    $('#summon').classList.add('live');
+    $('#qn').textContent=scored.length+' 张对味';
+    $('#hint').classList.add('off');
+  }
+  function clearSummon(){
+    if(!summon) return;
+    summon=null;
+    const all=visibleItems();
+    all.forEach((it,i)=>{ it.tx=it.hx; it.ty=it.hy; it.ts=1; it.dly=performance.now()+i*4; });
+    $('#summon').classList.remove('live');
+    $('#q').value='';
+  }
+  $('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') doSummon($('#q').value); });
+  $('#qx').onclick=()=>clearSummon();
+  window.__summon = doSummon;   // 供抽屉「同款」跨器官联动：抽屉里点手法卡 → 画布召唤该感觉词
+
+  function toggleStress(on){   // 压测机制保留（供 #v=4 开发自测），UI 按钮已移除
+    stressOn = on===undefined? !stressOn : on;
+    if(stressOn && !fakes){
+      fakes=[];
+      for(let k=1;k<=25;k++) DATA.forEach((e,j)=>fakes.push(makeItem(e,true,k*19+j)));
+    }
+  }
+
+  function enterFocus(it){
+    focus=it; activeFacet=null;
+    const z=Math.min(3.6, (H*.62)/it.h);
+    ct.z=z; ct.x=it.x + it.w*.30 + 150/z; ct.y=it.y;
+    $('#hint').classList.add('off');
+  }
+  function exitFocus(){
+    focus=null; activeFacet=null;
+    $('#fbar').classList.remove('on');
+    if(ct.z>1.2) ct.z=.55;
+  }
+  addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      if(document.activeElement===$('#q')){ $('#q').blur(); return; }
+      if(focus) exitFocus();
+      else if(summon) clearSummon();
+    }
+  });
+
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const f=Math.exp(-e.deltaY*.0016);
+    const nz=Math.max(.18, Math.min(4.2, ct.z*f));
+    const px=(e.clientX-W/2)/ct.z+ct.x, py=(e.clientY-H/2)/ct.z+ct.y;
+    ct.x=px-(e.clientX-W/2)/nz; ct.y=py-(e.clientY-H/2)/nz; ct.z=nz;
+    if(focus && nz<1.3) exitFocus();
+    $('#hint').classList.add('off');
+  },{passive:false});
+  cv.addEventListener('pointerdown',e=>{ dragging={x:e.clientX,y:e.clientY,moved:0}; cv.classList.add('dragging'); });
+  addEventListener('pointermove',e=>{
+    if(dragging){
+      const dx=e.clientX-dragging.x, dy=e.clientY-dragging.y;
+      dragging.moved+=Math.abs(dx)+Math.abs(dy);
+      ct.x-=dx/cam.z; ct.y-=dy/cam.z; cam.x-=dx/cam.z; cam.y-=dy/cam.z;
+      dragging.x=e.clientX; dragging.y=e.clientY;
+    }
+    mouse.x=e.clientX; mouse.y=e.clientY;
+  });
+  addEventListener('pointerup',e=>{
+    if(dragging && dragging.moved<6){       // 单击（非拖拽）
+      const it=pick(e.clientX,e.clientY);
+      if(it){                                // 先判图：命中图 → 开抽屉（拆解）
+        const idx=DATA.indexOf(it.e);
+        if(idx>=0 && window.openDrawer) window.openDrawer(idx);
+      }else{                                 // 没命中图
+        let hitWord=false;
+        for(const wh of wordHit){             // 命中感觉词 → 召唤该感觉聚类
+          if(Math.hypot(e.clientX-wh.x, e.clientY-wh.y)<wh.r){ $('#q').value=wh.w; doSummon(wh.w); hitWord=true; break; }
+        }
+        if(!hitWord && summon) clearSummon();  // 点空白 → 取消聚类（图飞回色温×明暗原位）
+      }
+    }
+    dragging=null; cv.classList.remove('dragging');
+  });
+  const mouse={x:-1,y:-1};
+
+  function pick(mx,my){
+    const all=visibleItems();
+    for(let i=all.length-1;i>=0;i--){
+      const it=all[i];
+      const sx=(it.x-cam.x)*cam.z+W/2, sy=(it.y-cam.y)*cam.z+H/2;
+      const hw=Math.max(12,it.w*cam.z/2), hh=Math.max(12,it.h*cam.z/2);
+      if(Math.abs(mx-sx)<hw && Math.abs(my-sy)<hh) return it;
+    }
+    return null;
+  }
+  const trashedSet = new Set();   // 软删除：标记跳过绘制/命中/召唤
+  window.__canvasSetTrashed = ids => { trashedSet.clear(); (ids||[]).forEach(id=>trashedSet.add(id)); };
+  function visibleItems(){
+    const base = stressOn? items.concat(fakes||[]) : items;
+    return trashedSet.size ? base.filter(it=>!trashedSet.has(it.e.id)) : base;
+  }
+  // 删图后即时重排：只按留下的图重算色彩归一化+落点+感觉词重心，平滑挪过去（不用刷新）
+  window.__canvasRelayout = ()=>{
+    const live = items.filter(it=>!trashedSet.has(it.e.id));
+    if(live.length<2) return;
+    recomputeNorm(live.map(it=>it.e));
+    live.forEach(placeItem);
+    relax(live);
+    const now=performance.now();
+    live.forEach((it,i)=>{ it.tx=it.hx; it.ty=it.hy; it.dly=now+i*6; });
+    words = buildWords(live);
+    if(!summon){ window.__canvasResume && window.__canvasResume(); }
+  };
+
+  /* ── 主循环（加 pause/resume 钩子）── */
+  let rafId=null, running=false;
+  function tick(now){
+    const dt=now-lastT; lastT=now;
+    fpsE=fpsE*.95+(1000/Math.max(1,dt))*.05;
+
+    cam.x+=(ct.x-cam.x)*.085; cam.y+=(ct.y-cam.y)*.085; cam.z+=(ct.z-cam.z)*.085;
+    const all=visibleItems();
+    for(const it of all){
+      if(now<it.dly) continue;
+      it.x+=(it.tx-it.x)*.045; it.y+=(it.ty-it.y)*.045;
+      it.s+=(it.ts-it.s)*.045;
+    }
+    draw(now);
+    if(running) rafId=requestAnimationFrame(tick);
+  }
+  window.__canvasPause=()=>{ running=false; if(rafId) cancelAnimationFrame(rafId); rafId=null; };
+  window.__canvasResume=()=>{ if(running) return; running=true; fit(); lastT=performance.now(); rafId=requestAnimationFrame(tick); };
+
+  function drawCard(it, now, z, mode){
+    const floatY = (mode==='normal' && !focus && !summon) ? Math.sin(now*.0008+it.seed)*3 : 0;
+    const sc = focus ? 1 : it.s;
+    const sx=(it.x-cam.x)*z+W/2, sy=(it.y-cam.y)*z+H/2 + floatY;
+    const sw=it.w*z*sc, sh=it.h*z*sc;
+    if(sx+sw/2<-90||sx-sw/2>W+90||sy+sh/2<-90||sy-sh/2>H+90) return;
+    const base = mode==='dim'?.13 : mode==='focusdim'?.08 : 1;
+    const im=imgs[it.e.id];
+    const isHov = (it===hover && mode!=='focusdim');
+    const hovS=isHov?1.06:1;
+    const w2=sw*hovS, h2=sh*hovS;
+    const fr=Math.max(1.5, 2.2*z);
+    ctx.globalAlpha=base;
+    ctx.save();
+    ctx.shadowColor='rgba(26,26,26,'+(mode==='lit'?.24:.15)+')';
+    ctx.shadowBlur=Math.min(24,(mode==='lit'?15:10)*z); ctx.shadowOffsetY=mode==='lit'?6:3;
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(sx-w2/2-fr, sy-h2/2-fr, w2+fr*2, h2+fr*2, Math.min(10,4*z+2));
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha=base;
+    if(im && im.complete && im.naturalWidth){
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(sx-w2/2, sy-h2/2, w2, h2, Math.min(7,3*z+1.5));
+      ctx.clip();
+      ctx.drawImage(im, sx-w2/2, sy-h2/2, w2, h2);
+      ctx.restore();
+    }else{
+      ctx.fillStyle='#e3dfd6'; ctx.fillRect(sx-w2/2, sy-h2/2, w2, h2);
+    }
+    if(mode==='lit'){
+      ctx.globalAlpha=1;
+      ctx.strokeStyle='#b0402f'; ctx.lineWidth=Math.max(1.5,2.2*z);
+      ctx.beginPath();
+      ctx.roundRect(sx-w2/2-fr, sy-h2/2-fr, w2+fr*2, h2+fr*2, Math.min(10,4*z+2));
+      ctx.stroke();
+    }
+    if(isHov && base>.5 && sw>70){
+      ctx.globalAlpha=1; ctx.textAlign='center';
+      ctx.font='12px "PingFang SC"'; ctx.fillStyle='#1a1a1a';
+      ctx.fillText(it.e.title, sx, sy+h2/2+20);
+      ctx.font='10px "PingFang SC"'; ctx.fillStyle='#8a8478';
+      ctx.fillText([...it.feels.keys()].join(' · '), sx, sy+h2/2+36);
+    }
+  }
+
+  function draw(now){
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.fillStyle='#f7f5f0'; ctx.fillRect(0,0,W,H);
+    const z=cam.z;
+    const all=visibleItems();
+    hover = (!dragging && z>.3)? pick(mouse.x,mouse.y) : null;
+
+    // 感觉词标签（位置=该感觉成员的色彩重心）：概览满显+奶油晕(压图上也读得清/可点)，放大看图时退场
+    const wA=1-smooth(z,.55,.85);
+    wordHit=[];
+    if(wA>0){
+      ctx.textAlign='center';
+      words.forEach(o=>{
+        const sx=(o.x-cam.x)*z+W/2, sy=(o.y-cam.y)*z+H/2;
+        if(sx<-200||sx>W+200||sy<-80||sy>H+80) return;
+        const on = summon && summon.q===o.w;
+        ctx.save();
+        ctx.shadowColor='rgba(247,245,240,.92)'; ctx.shadowBlur=8;   // 奶油晕保留，压图上仍读得清
+        ctx.globalAlpha=wA*(on?.95:.5);
+        ctx.fillStyle=on?'#b0402f':'#a59c8b';
+        ctx.font=(on?'600 ':'400 ')+'18px Georgia, "Songti SC", serif';
+        ctx.fillText(o.w, sx, sy-9);
+        ctx.globalAlpha=wA*(on?.7:.38); ctx.fillStyle=on?'#b0402f':'#bdb6a8'; ctx.font='10px "PingFang SC"';
+        ctx.fillText(o.n+' 手法', sx, sy+6);
+        ctx.restore();
+        wordHit.push({w:o.w, x:sx, y:sy-4, r:54});
+      });
+    }
+
+    if(focus){
+      for(const it of all){ if(it!==focus) drawCard(it, now, z, 'focusdim'); }
+      drawCard(focus, now, z, 'normal');
+    }else if(summon){
+      for(const it of all){ if(!summon.lit.has(it)) drawCard(it, now, z, 'dim'); }
+      for(const it of all){ if(summon.lit.has(it)) drawCard(it, now, z, 'lit'); }
+    }else{
+      for(const it of all) drawCard(it, now, z, 'normal');
+    }
+
+    if(focus && z>1.2){
+      const it=focus;
+      const aA=smooth(z,1.2,Math.min(3,ct.z));
+      const sx=(it.x-cam.x)*z+W/2, sy=(it.y-cam.y)*z+H/2;
+      const sw=it.w*z, sh=it.h*z;
+      const fs=it.e.facets;
+      const lx=sx+sw/2+56;
+      const slots=fs.map((f,i)=> sy-sh/2 + (i+.5)*(sh/fs.length));
+      activeFacet=null;
+      fs.forEach((f,i)=>{
+        const ax=sx-sw/2+(f.at?f.at[0]:50)/100*sw;
+        const ay=sy-sh/2+(f.at?f.at[1]:50)/100*sh;
+        const ly=slots[i];
+        const near = Math.hypot(mouse.x-ax,mouse.y-ay)<26 ||
+                     (mouse.x>lx-12 && mouse.x<lx+240 && Math.abs(mouse.y-ly)<16);
+        if(near) activeFacet=f;
+        ctx.globalAlpha=aA*(near?1:.85);
+        const r=5+Math.sin(now*.003+i)*1.2;
+        ctx.strokeStyle='#b0402f'; ctx.lineWidth=1.6;
+        ctx.beginPath(); ctx.arc(ax,ay,r,0,7); ctx.stroke();
+        ctx.fillStyle='#b0402f';
+        ctx.beginPath(); ctx.arc(ax,ay,1.8,0,7); ctx.fill();
+        ctx.strokeStyle=near?'#b0402f':'#bdb5a6'; ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.moveTo(ax+r+2,ay);
+        ctx.bezierCurveTo(ax+(lx-ax)*.55, ay, lx-40, ly, lx-10, ly);
+        ctx.stroke();
+        ctx.textAlign='left';
+        ctx.fillStyle=near?'#1a1a1a':'#3a352e';
+        ctx.font='600 14px "PingFang SC"';
+        ctx.fillText(f.zh, lx, ly-3);
+        ctx.fillStyle='#8a8478'; ctx.font='10.5px "PingFang SC"';
+        ctx.fillText(f.en, lx, ly+13);
+      });
+      const fb=$('#fbar');
+      if(activeFacet){
+        fb.innerHTML=`<div class="say">${activeFacet.say}</div><div class="tune"><b>边界</b> ${activeFacet.tune}</div>`;
+        fb.classList.add('on');
+      }else fb.classList.remove('on');
+    }
+  }
+
+  const m=location.hash.match(/v=(\d)/);
+  if(m){
+    const v=+m[1];
+    if(v===1){ cam.z=ct.z=.55; }
+    if(v===2){ cam.z=ct.z=.55; enterFocus(items[Math.min(14,items.length-1)]); cam.x=ct.x; cam.y=ct.y; cam.z=ct.z; }
+    if(v===3){ cam.z=ct.z=.55; doSummon('安静'); }
+    if(v===4){ cam.z=ct.z=.50; toggleStress(true); }
+  }
+  // 默认模式=画布 → 直接启动；切走时由 __canvasPause 暂停
+  window.__canvasResume();
+})();
+</script>
+
+<!-- ── 找灵感（demo-e 瀑布流，沿用）── -->
+<script>
+(()=>{
+  const host = url => url.replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  const shot = url => `https://s.wordpress.com/mshots/v1/${encodeURIComponent(url)}?w=900&h=600`;
+  const pad2 = n => String(n).padStart(2,'0');
+  const imgTag = s => {
+    const poster = s.img || shot(s.url);
+    if(s.vid) return `<video class="mv" autoplay muted loop playsinline preload="auto" poster="${poster}">
+      <source src="${s.vid}" type="video/mp4"></video>`;
+    return `<img loading="lazy" src="${poster}" alt="${s.name}"
+      onerror="this.onerror=null;this.src='${shot(s.url)}'">`;
+  };
+
+  const SITES = [
+    {name:'CSS Design Awards', url:'https://www.cssdesignawards.com/', zone:'综合', cat:'综合', score:8.5, img:'shots/cssda.jpg', desc:'老牌网页设计奖，每日甄选全球最佳网站，评审维度细到交互与创新。'},
+    {name:'Awwwards',          url:'https://www.awwwards.com/',        zone:'综合', cat:'综合', score:9.2, img:'shots/awwwards.jpg', desc:'最权威的网页设计奖，前沿视觉的风向标。每天甄选一个 Site of the Day。'},
+    {name:'Variant',           url:'https://variant.com/',             zone:'综合', cat:'生成式', score:7.8, img:'shots/variant.jpg', desc:'“想法不用解释，直接滚着看”——把感觉翻成一屏屏现成设计的生成式画廊。'},
+    {name:'Godly',             url:'https://godly.website/',           zone:'综合', cat:'综合', score:9.5, img:'shots/godly.jpg', vid:'shots/godly.mp4', desc:'极度挑剔的网站灵感聚合，质量门槛很高，几乎张张能直接当审美标杆。'},
+    {name:'Curations Supply',  url:'https://curations.supply/',        zone:'综合', cat:'综合', score:8.0, img:'shots/curations.jpg', desc:'设计资源的精选目录，把各路灵感站分门别类，找特定类型时好用。'},
+    {name:'Sutera',      url:'https://www.sutera.ch/',   zone:'单站', cat:'作品集', score:9.0, img:'folio/sutera.jpg',  vid:'folio/sutera.mp4',  desc:'个人作品集，editorial 排版配漂浮 3D 物件'},
+    {name:'Bruno Simon', url:'https://bruno-simon.com/', zone:'单站', cat:'作品集', score:9.5, img:'folio/bruno.jpg',   desc:'Three.js 大神的 3D 交互作品集'},
+    {name:'Michele Du',  url:'https://micheledu.com/',   zone:'单站', cat:'作品集', score:9.0, img:'folio/michele.jpg', vid:'folio/michele.mp4', desc:'交互设计师作品集，叙事范本'},
+    {name:'Just McKissick', url:'https://justmckissick.com/', zone:'单站', cat:'作品集', score:9.0, img:'folio/justmckissick.jpg', desc:'产品设计师个人站，Meta / Moody\'s 案例叙事，履历即作品的范本'},
+    {name:'Floema',      url:'https://www.floema.com/',  zone:'单站', cat:'品牌站', score:9.0, img:'folio/floema.jpg', vid:'folio/floema2.mp4', desc:'城市家具品牌站，奶油底 editorial 排版，连体胶囊导航是切换器范本'},
+    {name:'SuperrBook',  url:'https://www.superr.ai/',   zone:'单站', cat:'品牌站', score:8.5, img:'folio/superr2.jpg', desc:'学生 AI 手写本品牌落地页，童趣插画 + 利落叙事把硬件讲软'},
+    {name:'Refero',            url:'https://refero.design/',     zone:'专项', cat:'真实 UI',  score:8.5, img:'shots/refero.jpg', desc:'真实产品的界面截图库，可按页面与流程检索，看成熟产品的真实设计决策。'},
+    {name:'Mobbin',            url:'https://mobbin.com/',        zone:'专项', cat:'真实 UI',  score:8.5, img:'shots/mobbin.jpg', desc:'海量真实 App 截图，按 App、流程、控件检索，移动端设计的活字典。'},
+    {name:'Lapa Ninja',        url:'https://www.lapa.ninja/',    zone:'专项', cat:'落地页',   score:8.0, img:'shots/lapa.jpg', desc:'落地页专门画廊，按行业与板块分类，结构清晰，落地页与个人站灵感首选。'},
+    {name:'Component Gallery', url:'https://component.gallery/', zone:'专项', cat:'设计系统', score:8.0, img:'shots/component.jpg', desc:'跨产品的组件设计参考，同一个组件看各家怎么做，搭设计系统必看。'},
+  ];
+
+  const ZONES = ['综合','单站','专项'];
+
+  let html='', rowIdx=0;
+  ZONES.forEach(z=>{
+    const list = SITES.filter(s=>s.zone===z);
+    if(!list.length) return;
+    // 区头：单站直接跟「作品集 N · 品牌站 N」说明
+    let headExtra='';
+    if(z==='单站'){
+      const cc={}; list.forEach(s=>cc[s.cat]=(cc[s.cat]||0)+1);
+      headExtra = `<span class="grp-inline">`+['作品集','品牌站'].filter(c=>cc[c]).map(c=>`${c} <b>${cc[c]}</b>`).join(' · ')+`</span>`;
+    }
+    html += `<section class="zone"><div class="zone-head"><h3>${z}</h3><span class="cnt">${list.length} 站</span>${headExtra}<span class="ln"></span></div>`;
+    if(z==='单站'){
+      // 按 cat 分组：品牌站（落地页=招贴）钉墙在上，作品集（书）上架在下
+      const PINNED = new Set(['品牌站']);
+      const cats=[], byCat={};
+      list.forEach(s=>{ if(!byCat[s.cat]){byCat[s.cat]=[]; cats.push(s.cat);} byCat[s.cat].push(s); });
+      const veil = s => `<div class="veil"><span class="vk">${s.cat}</span><span class="vn">${s.name}</span><span class="vd">${s.desc}</span><span class="vh">${host(s.url)}</span><span class="vgo">访问 ↗</span></div>`;
+      const frame = s => `<div class="frame">${imgTag(s)}${veil(s)}</div>`;
+
+      // —— 钉墙（每框一条倒 V 挂绳 + 朱砂图钉），cards 缩小、轻微自然下垂 ——
+      const wallHTML = cats.filter(c=>PINNED.has(c)).map(c=>{
+        const pins = byCat[c].map((s,i)=>`
+          <a class="art pin pin--${i%2?'r':'l'}" href="${s.url}" target="_blank" rel="noopener">
+            <svg class="cord" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline points="0,30 50,2 100,30"/></svg>
+            <span class="tack"></span>
+            <div class="print">${frame(s)}</div>
+          </a>`).join('');
+        return `<div class="wall"><div class="pin-row">${pins}</div></div>`;
+      }).join('');
+
+      // —— 上架（左起第一本最大、其余等比缩小、直立齐脚），小图加 art--sm 让边框更细 ——
+      const GAP = 1.6;
+      const shelfHTML = cats.filter(c=>!PINNED.has(c)).map(c=>{
+        const r = byCat[c], n = r.length;
+        const center = n<=2;
+        // 宽度 = 内缩后内容框（占全宽 91%）的百分比；左对齐时填满 100，首尾正好压住木板顶面两端
+        const bigW   = center ? 38 : 34;
+        const smallW = n<=1 ? bigW : center ? 28 : (100 - bigW - GAP*(n-1)) / (n-1);
+        const cells = r.map((s,i)=>`
+          <a class="art ${i===0?'':'art--sm'}" style="width:${(i===0?bigW:smallW).toFixed(1)}%" href="${s.url}" target="_blank" rel="noopener">
+            <div class="print">${frame(s)}</div>
+          </a>`).join('');
+        return `<div class="shelf-row" style="justify-content:${center?'center':'flex-start'};gap:${GAP}%">`
+          + cells
+          + `</div><div class="ledge"><span class="ltop"></span><span class="lface"></span></div>`;
+      }).join('');
+
+      html += wallHTML + (shelfHTML ? `<div class="shelf">${shelfHTML}</div>` : '');
+    }else if(z==='综合'){
+      html += list.map(s=>{ rowIdx++; return `
+        <div class="row">
+          <a class="shot" href="${s.url}" target="_blank" rel="noopener"><div class="frame">
+            ${imgTag(s)}
+            <div class="veil"><span class="vk">${s.cat}</span><span class="vn">${s.name}</span><span class="vgo">访问 ↗</span></div>
+          </div></a>
+          <div class="info cell">
+            <div class="tagline"><span class="no">№ ${pad2(rowIdx)}</span><span>${s.cat}</span></div>
+            <h2>${s.name}</h2>
+            <div class="host">${host(s.url)}</div>
+            <div class="desc">${s.desc}</div>
+            <a class="visit" href="${s.url}" target="_blank" rel="noopener">访问 ↗</a>
+          </div>
+        </div>`; }).join('');
+    }else{
+      html += `<div class="mini">` + list.map(s=>`
+        <a class="mcard" href="${s.url}" target="_blank" rel="noopener">
+          <div class="shot"><div class="frame">
+            ${imgTag(s)}
+            <div class="veil"><span class="vk">${s.cat}</span><span class="vd">${s.desc}</span><span class="vgo">访问 ↗</span></div>
+          </div></div>
+          <div class="mtag">${s.cat}</div>
+          <div class="mname">${s.name}</div>
+          <div class="mhost">${host(s.url)}</div>
+        </a>`).join('') + `</div>`;
+    }
+    html += `</section>`;
+  });
+  document.getElementById('main').innerHTML = html;
+})();
+</script>
+
+<!-- ── 940 抽屉器官（移植自 index.html；段①只读查看 + 本地收存）── -->
+<script>
+(function(){
+  const DATA = window.LIBRARY;
+  const $ = s => document.querySelector(s);
+
+  const saved = (()=>{ try{return JSON.parse(localStorage.getItem('lingganku.v3'))||{}}catch(e){return {}} })();
+  const state = {
+    cur: Math.min(saved.cur||0, DATA.length-1),
+    picked: new Set(saved.picked||[]),
+    trashed: new Set(saved.trashed||[]),     // 软删除：仅页面隐藏，原件不动，可找回
+    viewed: Array.isArray(saved.viewed) ? saved.viewed.slice() : []
+  };
+  function persist(){
+    localStorage.setItem('lingganku.v3', JSON.stringify({
+      cur:state.cur, picked:[...state.picked], trashed:[...state.trashed], viewed:state.viewed
+    }));
+  }
+
+  const allFacets = [];
+  DATA.forEach(e=>e.facets.forEach(f=>allFacets.push({entry:e,facet:f})));
+  function findFacet(fid){ return allFacets.find(x=>x.facet.id===fid)||null; }
+
+  const ICO = {
+    plus:  '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>',
+    check: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.2 8.6l3.1 3 6.5-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+    search:'<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="3.8" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9.9 9.9l3.3 3.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    trash: '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M3 4.2h10M6.4 4.2V3c0-.4.3-.7.7-.7h1.8c.4 0 .7.3.7.7v1.2M4.4 4.2l.5 8c0 .5.4.8.8.8h4.6c.4 0 .8-.3.8-.8l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+  };
+
+  let toastTimer;
+  function flash(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),2200); }
+  function fallbackCopy(txt){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy')}catch(e){} ta.remove(); }
+  function copyText(txt,msg){ const done=()=>flash(msg||'已复制'); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>{fallbackCopy(txt);done();}); } else { fallbackCopy(txt); done(); } }
+
+  function setHot(fid,on){ document.querySelectorAll(`[data-fid="${fid}"]`).forEach(el=>el.classList.toggle('hot',on)); }
+
+  /* ════ 演示模式（Vercel / ?demo=1）：纯浏览可玩，写盘/喂图转下载 CTA ════ */
+  const FACET_DEMO = !!window.FACET_DEMO;
+  const REPO_URL = window.REPO_URL || 'https://github.com/pxx-design/facet';
+  const DEMO_LANG = (navigator.language||'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  const DEMO_T = {
+    zh:{ cta:'在线体验版，创建自己的<b>灵感库 →</b>',
+         head:'你收的手法',
+         pitch:'下载「灵感库」，一键让你的 AI 把这些手法用起来',
+         get:'去获取',
+         nudge:'收好了 ✓ 想用起来？点右上角「已收」',
+         note:'图片仅为示例，如涉及版权请联系删除' },
+    en:{ cta:'Live demo — create your own <b>library →</b>',
+         head:'Your saved techniques',
+         pitch:'Get Facet — let your AI put these techniques to work, in one click',
+         get:'Get it',
+         nudge:'Saved ✓ Want to use it? Open "Saved" (top-right)',
+         note:'Images shown as examples — contact us to remove.' }
+  }[DEMO_LANG];
+  function initDemo(){
+    const cta=$('#demo-cta'); if(cta){ cta.innerHTML=DEMO_T.cta; cta.href=REPO_URL; }
+    const note=$('#demo-note'); if(note) note.textContent=DEMO_T.note;
+    const head=document.querySelector('.pp-head span'); if(head) head.textContent=DEMO_T.head;
+    const foot=document.querySelector('.pp-foot');
+    if(foot) foot.innerHTML=`<div class="pp-pitch">${DEMO_T.pitch}</div><a class="pp-get" href="${REPO_URL}" target="_blank" rel="noopener">${DEMO_T.get}</a>`;
+  }
+  function demoNudge(){
+    if(localStorage.getItem('lingganku.demoNudged')) return;
+    localStorage.setItem('lingganku.demoNudged','1');
+    flash(DEMO_T.nudge);
+  }
+
+  // 段①：收存本地（localStorage）；写 _desk.json 给「转译」用 = 段②（磁盘桥）
+  function togglePick(fid){
+    const adding = !state.picked.has(fid);
+    adding ? state.picked.add(fid) : state.picked.delete(fid);
+    persist(); scheduleDesk(); renderPicked();
+    if($('#drawer').classList.contains('on')) renderDrawer();
+    if(FACET_DEMO && adding && state.picked.size>=2) demoNudge();
+  }
+
+  /* ── 锚点校准：拖圆点改 at，松手按 facet id 精确写回 data-v3.js（移植自 index.html）── */
+  let calibrating = false;
+  function toggleCalibrate(){
+    calibrating = !calibrating;
+    renderPlate();
+    flash(calibrating ? '校准开 · 拖圆点到准确位置，松手自动写回' : '校准关');
+  }
+  function startAnchorDrag(ev, facet, el, inner){
+    ev.preventDefault(); ev.stopPropagation();
+    try{ el.setPointerCapture(ev.pointerId); }catch(e){}
+    const rect = inner.getBoundingClientRect();
+    const move = e=>{
+      const nx = Math.max(0, Math.min(100, (e.clientX-rect.left)/rect.width*100));
+      const ny = Math.max(0, Math.min(100, (e.clientY-rect.top)/rect.height*100));
+      facet.at = [Math.round(nx*10)/10, Math.round(ny*10)/10];
+      el.style.left = facet.at[0]+'%'; el.style.top = facet.at[1]+'%';
+      el.classList.toggle('flip', facet.at[0]>72);
+    };
+    const up = ()=>{
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      writeAnchor(facet);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+  async function writeAnchor(facet){
+    if(!dirHandle || !(await refreshConn())){ flash('已暂存（刷新会丢）— 连接文件夹后才能写回磁盘'); return; }
+    try{
+      const fh = await dirHandle.getFileHandle('data-v3.js');
+      const txt = await (await fh.getFile()).text();
+      const idEsc = facet.id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const re = new RegExp('(id:\\s*"'+idEsc+'"[\\s\\S]*?at:\\s*)\\[[^\\]]*\\]');
+      const next = txt.replace(re, '$1['+facet.at[0]+', '+facet.at[1]+']');
+      if(next===txt){ flash('未匹配到 '+facet.id+'，未写回'); return; }
+      const w = await fh.createWritable(); await w.write(next); await w.close();
+      flash('已写回 '+facet.id+' → ['+facet.at[0]+', '+facet.at[1]+']');
+    }catch(err){ flash('写回失败: '+err.message); }
+  }
+
+  function renderPlate(){
+    const e = DATA[state.cur];
+    $('#drawer').classList.toggle('wide', (e.ar||1) > 1.4);
+    const plate = $('#plate');
+    plate.classList.toggle('calibrating', calibrating);
+    plate.innerHTML = `<span class="plate-inner" style="--ar:${e.ar||1.6}"><img src="${e.asset}" alt="${e.title}"></span>`;
+    const inner = plate.querySelector('.plate-inner');
+    e.facets.forEach((f,i)=>{
+      const a = document.createElement('span');
+      a.className = 'anchor' + (state.picked.has(f.id)?' picked':'') + (f.at[0]>72?' flip':'') + (calibrating?' cal':'');
+      a.dataset.fid = f.id;
+      a.style.left = f.at[0]+'%'; a.style.top = f.at[1]+'%';
+      a.innerHTML = `<span class="dot" style="animation-delay:${(i*0.45).toFixed(2)}s">${i+1}</span><span class="tag">${f.zh}</span>`;
+      a.onmouseenter = ()=>setHot(f.id,true);
+      a.onmouseleave = ()=>setHot(f.id,false);
+      if(calibrating) a.onpointerdown = ev=>startAnchorDrag(ev, f, a, inner);
+      else            a.onclick = ()=>togglePick(f.id);
+      inner.appendChild(a);
+    });
+    $('#plate-caption').innerHTML =
+      `<span class="no">№${e.id}</span>`+
+      `<span>${e.facets.length} 手法</span>`+
+      `<span class="cap-gap"></span>`+
+      `<span class="nav-arrows"><button id="prev" title="上一张 ←">←</button><button id="next" title="下一张 →">→</button></span>`+
+      `<span>${state.cur+1} / ${DATA.length}</span>`+
+      `<button class="plate-cal${calibrating?' on':''}" id="plate-cal" title="校准锚点 — 拖圆点到准确位置，松手写回 data-v3.js">✛ 校准</button>`+
+      `<button class="plate-trash" id="plate-trash" title="删除这张 — 可在回收站找回">${ICO.trash} 删除</button>`;
+    $('#prev').onclick = ()=>nav(-1);
+    $('#next').onclick = ()=>nav(1);
+    $('#plate-cal').onclick = toggleCalibrate;
+    $('#plate-trash').onclick = ()=>trashEntry(DATA[state.cur].id);
+    const sw = $('#swatches');
+    sw.innerHTML = (e.colors||[]).map(c=>
+      `<button class="sw" style="background:${c}" title="点击复制 ${c}" data-hex="${c}"></button>`).join('');
+    sw.querySelectorAll('.sw').forEach(b=>{ b.onclick = ()=>copyText(b.dataset.hex, '已复制 '+b.dataset.hex); });
+  }
+  function nav(d){ state.cur=(state.cur+d+DATA.length)%DATA.length; persist(); renderDrawer(); }
+
+  function renderPanel(){
+    const e = DATA[state.cur];
+    const panel = $('#panel');
+    const fm = new Map();
+    e.facets.forEach(f=>f.feels.forEach(w=>fm.set(w,(fm.get(w)||0)+1)));
+    const feels = [...fm.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+    let h = `<div class="panel-meta">№${e.id} · ${e.family}</div><h2>${e.title}</h2>`;
+    h += `<div class="feel-line"><span class="lab">感觉</span>`;
+    h += feels.map(w=>`<button class="feel" data-feel="${w}">${w}</button>`).join('');
+    h += `<span class="feel-hint">点感觉词 = 整组收；点手法卡 = 在画布看同款</span></div>`;
+    e.facets.forEach((f,i)=>{
+      const picked = state.picked.has(f.id);
+      h += `<div class="move${picked?' picked':''}" data-fid="${f.id}" title="在画布上看同款">
+        <span class="num">${i+1}</span>
+        <span class="zh">${f.zh}</span>
+        <span class="acts">
+          <button class="act pick${picked?' on':''}" data-pick="${f.id}" title="${picked?'已收 · 点击移出':'收 — 给「转译」用'}">${picked?ICO.check:ICO.plus}</button>
+          <a class="act" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(f.q)}" target="_blank" rel="noopener" title="搜同类视觉" onclick="event.stopPropagation()">${ICO.search}</a>
+        </span>
+        <span class="en">${f.en}</span>
+        <span class="mech">${f.mech}</span>
+      </div>`;
+    });
+    panel.innerHTML = h; panel.scrollTop = 0;
+    panel.querySelectorAll('.move').forEach(m=>{
+      m.onclick = ()=>summonSame(m.dataset.fid);
+      m.onmouseenter = ()=>setHot(m.dataset.fid,true);
+      m.onmouseleave = ()=>setHot(m.dataset.fid,false);
+    });
+    panel.querySelectorAll('.act.pick').forEach(b=>{
+      b.onclick = ev=>{ ev.stopPropagation(); togglePick(b.dataset.pick); };
+    });
+    panel.querySelectorAll('.feel').forEach(b=>{
+      const word = b.dataset.feel;
+      const ids = e.facets.filter(f=>f.feels.includes(word)).map(f=>f.id);
+      b.onclick = ()=>{
+        const allIn = ids.every(id=>state.picked.has(id));
+        ids.forEach(id=> allIn ? state.picked.delete(id) : state.picked.add(id));
+        persist(); scheduleDesk(); renderPicked(); renderDrawer();
+      };
+      b.onmouseenter = ()=>ids.forEach(id=>setHot(id,true));
+      b.onmouseleave = ()=>ids.forEach(id=>setHot(id,false));
+    });
+  }
+
+  function renderDrawer(){ renderPlate(); renderPanel(); }
+  function markViewed(id){ const i=state.viewed.indexOf(id); if(i>=0) state.viewed.splice(i,1); state.viewed.push(id); }
+  function syncScrim(){ $('#scrim').classList.toggle('on', $('#drawer').classList.contains('on')); }
+  function openDrawer(i){
+    state.cur=i; markViewed(DATA[i].id); persist();
+    renderDrawer();
+    $('#drawer').classList.add('on');
+    syncScrim();
+  }
+  function closeDrawer(){ $('#drawer').classList.remove('on'); syncScrim(); }
+  $('#scrim').onclick = closeDrawer;
+  // 兜底：点抽屉外任意处（蒙层/被蒙的控件）即关——不依赖蒙层命中，真实浏览器更稳
+  document.addEventListener('pointerdown', e=>{
+    if(!$('#drawer').classList.contains('on')) return;
+    if(e.target.closest('.drawer')) return;   // 抽屉内部不关（点 header 工具会先关抽屉再开侧栏）
+    closeDrawer();
+  }, true);
+
+  // 同款 → 关抽屉 + 画布召唤该手法的感觉词（跨器官联动）
+  function summonSame(fid){
+    const x = findFacet(fid); if(!x) return;
+    const w = x.facet.feels[0];
+    closeDrawer();
+    if(w && window.__summon){ const inp=$('#q'); if(inp) inp.value=w; window.__summon(w); }
+  }
+
+  $('#close-drawer').onclick = closeDrawer;
+
+  /* ── 右侧拉面板：已收（产出 → 给「转译」）/ 回收站（软删可找回）共用 ── */
+  let sideType = null;
+  const sideOpen = ()=> $('#side').classList.contains('on');
+  function openSide(type){   // 仅回收站用侧栏（已收走下拉气泡）
+    if(sideOpen() && sideType===type){ closeSide(); return; }
+    closePickPop();          // 与已收气泡互斥
+    sideType = type; renderSide();
+    $('#side').classList.add('on'); $('#side-scrim').classList.add('on');
+  }
+  function closeSide(){ $('#side').classList.remove('on'); $('#side-scrim').classList.remove('on'); sideType=null; }
+  function renderSide(){ if(sideType==='trash') renderTrashSide(); }
+  function renderTrashSide(){
+    $('#side').classList.add('wide');
+    $('#side-title').textContent='回收站'; $('#side-n').textContent=state.trashed.size;
+    $('#side-sub').textContent='软删除，原件不动，可恢复'; $('#side-clear').style.display='none'; $('#side-foot').style.display='none';
+    const body=$('#side-body'); body.innerHTML='';
+    if(state.trashed.size===0){ body.innerHTML='<div class="side-empty">回收站是空的</div>'; return; }
+    const grid=document.createElement('div'); grid.className='trash-grid';
+    [...state.trashed].forEach(eid=>{
+      const e=DATA.find(x=>x.id===eid); if(!e) return;
+      const c=document.createElement('div'); c.className='trash-card';
+      c.innerHTML=`<div class="tc-imgwrap"><img class="tc-img" src="${e.thumb}" alt=""><button class="tc-restore">恢复</button></div><div class="tc-cap"><b>№${e.id}</b> ${e.title}</div>`;
+      c.querySelector('.tc-restore').onclick=()=>restoreEntry(eid);
+      grid.appendChild(c);
+    });
+    body.appendChild(grid);
+  }
+
+  /* ── 已收 = 下拉气泡（锚在已收钮下方）：复用 pick-row（来源缩略+中英+出处）── */
+  const pickPopOpen = ()=> $('#pick-pop').classList.contains('on');
+  function renderPicked(){
+    $('#pick-n').textContent = state.picked.size;
+    const box=$('#pick-chips'); box.innerHTML='';
+    if(state.picked.size===0){ box.innerHTML='<div class="pp-empty">还没收手法<br>点画布图开抽屉，收锚点 / 手法卡</div>'; return; }
+    [...state.picked].forEach(fid=>{
+      const x=findFacet(fid); if(!x) return;
+      const row=document.createElement('div'); row.className='pick-row';
+      row.innerHTML=`<img src="${x.entry.thumb}" alt=""><div class="pr-txt"><div class="pr-zh">${x.facet.zh}</div><div class="pr-en">${x.facet.en}</div><div class="pr-src">来自 <b>№${x.entry.id}</b> ${x.entry.title}</div></div><button class="pr-x" title="移出">✕</button>`;
+      row.querySelector('.pr-x').onclick=()=>togglePick(fid);
+      row.onmouseenter=()=>setHot(fid,true); row.onmouseleave=()=>setHot(fid,false);
+      box.appendChild(row);
+    });
+  }
+  function openPickPop(){ closeSide(); renderPicked(); $('#pick-pop').classList.add('on'); $('#pick-btn').classList.add('open'); }
+  function closePickPop(){ $('#pick-pop').classList.remove('on'); $('#pick-btn').classList.remove('open'); }
+  $('#pick-btn').onclick = e=>{ e.stopPropagation(); pickPopOpen() ? closePickPop() : openPickPop(); };
+  $('#pick-clear').onclick = ()=>{
+    if(!state.picked.size) return;
+    state.picked.clear(); persist(); scheduleDesk(); renderPicked();
+    if($('#drawer').classList.contains('on')) renderDrawer();
+    flash('已清空已收');
+  };
+
+  /* ── 回收站（软删除 · 可找回；画布版钩子）── */
+  function syncCanvasTrash(){
+    if(window.__canvasSetTrashed) window.__canvasSetTrashed([...state.trashed]);
+    if(window.__canvasRelayout) window.__canvasRelayout();   // 删/恢复后即时按留下的图重排
+  }
+  function trashEntry(eid){
+    state.trashed.add(eid); persist();
+    closeDrawer(); syncCanvasTrash(); renderTrash();
+    flash('已移入回收站 · 右上「回收站」可找回');
+  }
+  function restoreEntry(eid){
+    state.trashed.delete(eid); persist();
+    syncCanvasTrash(); renderTrash();
+    flash('已放回画布');
+  }
+  function renderTrash(){
+    const n = state.trashed.size;
+    $('#trash-btn').classList.toggle('show', n>0);
+    $('#trash-n').textContent = n;
+    if(sideOpen() && sideType==='trash'){ if(n===0) closeSide(); else renderTrashSide(); }
+  }
+  $('#trash-btn').onclick = ()=> openSide('trash');
+  $('#side-close').onclick = closeSide;
+  $('#side-scrim').onclick = closeSide;
+  // 兜底：点面板外任意处即关——不依赖蒙层命中，真实浏览器更稳
+  document.addEventListener('pointerdown', e=>{
+    if(sideOpen() && !e.target.closest('#side') && !e.target.closest('.head-tools')) closeSide();
+    if(pickPopOpen() && !e.target.closest('.ht-wrap')) closePickPop();   // 气泡内/已收钮不关
+  }, true);
+
+  addEventListener('keydown', e=>{
+    if(e.key!=='Escape') return;
+    if(pickPopOpen()){ closePickPop(); return; }
+    if(sideOpen()){ closeSide(); return; }
+    if($('#drawer').classList.contains('on')) closeDrawer();
+  });
+
+  /* ── 段②：磁盘桥（File System Access API；移植自 index.html，同 idb/同 _desk.json 契约）──
+       连一次（这里或 index.html 任一处）→ 收的手法写 19-灵感库/_desk.json，「转译」直接读 */
+  let dirHandle = null, unconnToastShown = false;
+  function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('lingganku-v3',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  async function idbSet(k,v){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+  async function idbGet(k){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readonly'); const q=t.objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+
+  const connBtn = $('#conn-f'), connTxt = $('#conn-f-txt');
+  async function refreshConn(){
+    connBtn.classList.remove('live','stale');
+    if(!dirHandle){ connTxt.textContent='连接'; return false; }
+    let perm='denied';
+    try{ perm = await dirHandle.queryPermission({mode:'readwrite'}); }catch(e){}
+    if(perm==='granted'){ connBtn.classList.add('live'); connTxt.textContent=dirHandle.name||'已连接'; return true; }
+    if(perm==='prompt'){ connBtn.classList.add('stale'); connTxt.textContent='重新连接'; return false; }
+    connTxt.textContent='连接'; return false;
+  }
+  async function tryRestore(){
+    if(FACET_DEMO) return;
+    try{ dirHandle = await idbGet('dir'); if(dirHandle) await refreshConn(); }catch(e){}
+  }
+  connBtn.onclick = async ()=>{
+    if(!window.showDirectoryPicker){ flash('请用 Chrome 打开（需要 File System Access API）'); return; }
+    try{
+      if(dirHandle){
+        const perm = await dirHandle.queryPermission({mode:'readwrite'});
+        if(perm==='prompt' && (await dirHandle.requestPermission({mode:'readwrite'}))==='granted'){
+          await refreshConn(); flash('已连接 '+dirHandle.name); writeDesk(); renderTray(); return;
+        }
+      }
+      dirHandle = await window.showDirectoryPicker({mode:'readwrite', id:'lingganku'});
+      if((await dirHandle.requestPermission({mode:'readwrite'}))!=='granted'){ flash('未授权写入'); return; }
+      try{ await dirHandle.getFileHandle('data-v3.js'); }
+      catch(e){ flash('这不是灵感库根目录（缺 data-v3.js）——请选 19-灵感库'); dirHandle=null; await refreshConn(); return; }
+      await idbSet('dir', dirHandle);
+      await refreshConn();
+      flash('已连接 '+dirHandle.name);
+      writeDesk();   // 连接成功立即把当前已收写一次
+      renderTray();
+    }catch(e){
+      if(e.name==='AbortError') return;
+      if(e.name==='SecurityError') flash('浏览器在 file:// 下拦了授权——跑 ./start.sh 走 localhost 打开');
+      else flash('连接失败: '+e.message);
+    }
+  };
+
+  // _desk.json：反范式化，每条带全字段，「转译」读 picked 无需再解析 data-v3.js（schema 与 index.html 逐字一致）
+  function deskRecord(fid){
+    const x = findFacet(fid); if(!x) return null;
+    return {
+      id: x.facet.id, zh: x.facet.zh, en: x.facet.en,
+      say: x.facet.say, tune: x.facet.tune, feels: x.facet.feels.slice(),
+      plate: { id: x.entry.id, title: x.entry.title }
+    };
+  }
+  async function writeDesk(){
+    if(!dirHandle) return;
+    if(!(await refreshConn())) return;
+    const payload = {
+      updated: new Date().toISOString(),
+      note: '由灵感库 index.html 自动写入。「转译」口令读 picked。',
+      picked: [...state.picked].map(deskRecord).filter(Boolean)
+    };
+    try{
+      const fh = await dirHandle.getFileHandle('_desk.json',{create:true});
+      const w = await fh.createWritable(); await w.write(JSON.stringify(payload,null,2)); await w.close();
+    }catch(e){}
+  }
+  let deskT;
+  function scheduleDesk(){
+    if(!dirHandle){
+      if(!unconnToastShown){ unconnToastShown=true; flash('已存本机。连接文件夹（左下）后，「转译」才能读到'); }
+      return;
+    }
+    clearTimeout(deskT); deskT = setTimeout(writeDesk, 600);
+  }
+
+  /* ── 入库托盘（⌘V/拖图 → _inbox；点「入库」写 .go 标记，watcher 起无头 session 标注上图）──
+       契约与 index.html 逐字一致：_inbox/<图> + _inbox/.go */
+  async function saveFile(sub, name, blob){
+    const d = sub ? await dirHandle.getDirectoryHandle(sub,{create:true}) : dirHandle;
+    const fh = await d.getFileHandle(name,{create:true}); const w = await fh.createWritable();
+    await w.write(blob); await w.close();
+  }
+  async function listInbox(){
+    if(!dirHandle) return null;
+    if(!(await refreshConn())) return null;
+    try{
+      const inbox = await dirHandle.getDirectoryHandle('_inbox',{create:true}); const out=[];
+      for await(const [name,h] of inbox.entries()){
+        if(h.kind==='file' && /\.(png|jpe?g|webp|gif|mp4|mov|webm)$/i.test(name)){
+          const f = await h.getFile();
+          out.push({name, url:URL.createObjectURL(f), video:/\.(mp4|mov|webm)$/i.test(name)});
+        }
+      }
+      return out.sort((a,b)=>a.name<b.name?-1:1);
+    }catch(e){ return []; }
+  }
+  async function hasGo(){
+    try{ const d=await dirHandle.getDirectoryHandle('_inbox'); await d.getFileHandle('.go'); return true; }
+    catch(e){ return false; }
+  }
+  async function goStartedMs(){   // .go 文件的修改时间 = 点「入库」的时刻（刷新也不丢）
+    try{ const d=await dirHandle.getDirectoryHandle('_inbox'); const f=await (await d.getFileHandle('.go')).getFile(); return f.lastModified; }
+    catch(e){ return null; }
+  }
+  let ingesting = false;          // 供轮询调频（入库中查得勤）
+  const STUCK_MIN = 12;           // 超过这么久给「重置」兜底
+  const PASTE_KEY = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '') ? '⌘V' : 'Ctrl V';
+  async function renderTray(){
+    const tray=$('#tray'), info=$('#tray-info'), strip=$('#tray-strip'), go=$('#ingest-go');
+    const items = await listInbox();
+    if(items===null){ tray.classList.remove('show'); strip.innerHTML=''; go.style.display='none'; ingesting=false; return false; }
+    tray.classList.add('show');   // 已连接：托盘常驻（空态也提示）
+    tray.classList.toggle('empty', !items.length);   // 空态去卡片感
+    const pending = items.length ? await hasGo() : false;
+    ingesting = pending;
+    go.style.display = items.length ? '' : 'none';
+    go.disabled = pending;
+    go.textContent = pending ? '入库中…' : `入库 ${items.length} 张`;
+    if(!items.length){
+      info.innerHTML = `<span class="cmd">${PASTE_KEY}</span> 粘贴 / 拖图 到这里入库`;
+    }else if(!pending){
+      info.innerHTML = `待入库 <b>${items.length}</b> 张<span class="sub">点下面「入库」开始</span>`;
+    }else{
+      const started = await goStartedMs();
+      const mins = started ? Math.floor((Date.now()-started)/60000) : 0;
+      const when = (!started || mins<1) ? '刚开始' : `已 ${mins} 分钟`;
+      info.innerHTML = `正在入库 <b>${items.length}</b> 张…`
+        + `<span class="sub">${when} · 完成后会自动出现在画布上</span>`
+        + (mins>=STUCK_MIN ? `<span class="sub">超过 ${STUCK_MIN} 分钟了 · 看 _ingest.log，或 <a id="tray-reset">重置</a> 重来</span>` : '');
+      const rb = $('#tray-reset'); if(rb) rb.onclick = resetGo;
+    }
+    strip.innerHTML = items.map(it=>
+      `<div class="pend${pending?' ing':''}" style="background-image:url('${it.url}')">${it.video?`<span>▶ 视频</span>`:''}<button class="rm" data-rm="${it.name}" title="移出待入库">✕</button></div>`).join('');
+    strip.querySelectorAll('[data-rm]').forEach(b=>{ b.onclick = ()=>unstage(b.dataset.rm); });
+    return pending;
+  }
+  async function unstage(name){
+    try{ const inbox=await dirHandle.getDirectoryHandle('_inbox'); await inbox.removeEntry(name); await renderTray(); flash('已移出待入库'); }
+    catch(e){ flash('移出失败: '+e.message); }
+  }
+  async function resetGo(){       // 卡死兜底：清掉 .go（停后续轮次，不中断正在跑的那轮），让用户能重新触发
+    if(!(await refreshConn())) return;
+    try{ const inbox=await dirHandle.getDirectoryHandle('_inbox'); await inbox.removeEntry('.go'); flash('已重置 — 可重新点「入库」（不会中断正在跑的那轮）'); renderTray(); }
+    catch(e){ flash('重置失败: '+e.message); }
+  }
+  $('#ingest-go').onclick = async ()=>{
+    if(!(await refreshConn())){ flash('先点左下「连接」'); return; }
+    try{ await saveFile('_inbox','.go',new Blob(['go'])); flash('已触发入库 — 完成后切回本页自动上图'); renderTray(); }
+    catch(e){ flash('触发失败: '+e.message); }
+  };
+  async function stage(file){
+    if(!window.showDirectoryPicker){ flash('请用 Chrome，并先连接文件夹'); return; }
+    if(!(await refreshConn())){ flash('先点左下「连接」选文件夹'); return; }
+    try{
+      const ext = ((file.name||'').split('.').pop() || (file.type.split('/')[1]) || 'png').toLowerCase().replace('jpeg','jpg');
+      const name = `${Date.now()}-${Math.floor(Math.random()*1000)}.${ext}`;
+      await saveFile('_inbox', name, file); await renderTray();
+      flash('已暂存 ✓ 攒好点「入库」');
+    }catch(e){ flash('暂存失败: '+e.message); }
+  }
+  window.addEventListener('paste', e=>{
+    if(FACET_DEMO) return;
+    const f = [...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image'));
+    if(f){ e.preventDefault(); stage(f.getAsFile()); }
+  });
+  let dragDepth=0;
+  window.addEventListener('dragenter', e=>{ e.preventDefault(); if(e.dataTransfer.types.includes('Files')){ dragDepth++; $('#drop').classList.add('on'); } });
+  window.addEventListener('dragover', e=>e.preventDefault());
+  window.addEventListener('dragleave', ()=>{ if(--dragDepth<=0){ dragDepth=0; $('#drop').classList.remove('on'); } });
+  window.addEventListener('drop', async e=>{
+    e.preventDefault(); dragDepth=0; $('#drop').classList.remove('on');
+    if(FACET_DEMO) return;
+    const files = [...(e.dataTransfer.files||[])].filter(f=>/^(image|video)\//.test(f.type));
+    for(const f of files){ await stage(f); }
+  });
+
+  /* 对账：入库发生在对话里（Claude 动文件系统），页面感知不到。
+     切回窗口重列 _inbox；data-v3.js 变了（有新图入库）直接重载上画布。 */
+  let dataSig = null;
+  async function checkDataFresh(){
+    if(!dirHandle) return;
+    try{
+      if((await dirHandle.queryPermission({mode:'readwrite'}))!=='granted') return;
+      const f = await (await dirHandle.getFileHandle('data-v3.js')).getFile();
+      const sig = f.size+':'+f.lastModified;
+      if(dataSig===null){ dataSig = sig; return; }
+      if(sig!==dataSig) location.reload();
+    }catch(e){}
+  }
+  // 轮询：页面不再只靠失焦/聚焦才对账——连接后画布模式自轮询（入库中 12s / 空闲 60s），
+  // 不切窗口也能自动刷新、完成即自动上图；不会「看着不动以为卡了」。
+  let pollT=null;
+  function scheduleReconcilePoll(){
+    clearTimeout(pollT);
+    if(!dirHandle || document.body.classList.contains('mode-discover')) return;
+    pollT = setTimeout(reconcile, ingesting ? 12000 : 60000);
+  }
+  async function reconcile(){
+    if(document.body.classList.contains('mode-discover')){ return; }   // 找灵感模式不轮询
+    await renderTray(); await checkDataFresh();
+    scheduleReconcilePoll();
+  }
+  window.addEventListener('focus', reconcile);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) reconcile(); });
+  window.__trayKick = reconcile;   // 模式切回画布时重启轮询
+
+  tryRestore().then(reconcile);
+  syncCanvasTrash(); renderTrash(); renderPicked();
+  if(FACET_DEMO) initDemo();
+
+  window.openDrawer = openDrawer;
+})();
+</script>
+
+<!-- ── 模式切换 ── -->
+<script>
+(()=>{
+  const seg = document.getElementById('seg');
+  const lobes = [...seg.querySelectorAll('.lobe')];
+  function setMode(mode){
+    document.querySelectorAll('.mode').forEach(m=>m.classList.toggle('on', m.id==='mode-'+mode));
+    lobes.forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
+    document.body.classList.toggle('mode-canvas', mode==='canvas');
+    document.body.classList.toggle('mode-discover', mode==='discover');
+    if(mode==='canvas'){ window.scrollTo(0,0); window.__canvasResume && window.__canvasResume(); window.__trayKick && window.__trayKick(); }
+    else { window.__canvasPause && window.__canvasPause(); }
+  }
+  lobes.forEach(b=>{ b.onclick = ()=>setMode(b.dataset.mode); });
+})();
+</script>
+
+<!-- ── 切换 metaball（JS 实时算 SVG path）：rest 两胶囊相接、hover 哪侧哪侧外拉、中间一条颈拉长成丝 ── -->
+<script>
+(()=>{
+  const seg = document.getElementById('seg');
+  const path = document.getElementById('seg-path');
+  const clip = document.getElementById('seg-clip-path');
+  const glow = document.getElementById('seg-glow');
+  const lblL = document.querySelector('.lobe[data-mode="canvas"] .seg-lbl');
+  const lblR = document.querySelector('.lobe[data-mode="discover"] .seg-lbl');
+  const H=36, R=9, LW=82, GAP=1, SEP=26, NY=H/2-R, OV=R, CY=H/2, W=2*LW+GAP;  // GAP=rest相接间隙；SEP=hover外拉距离
+  const REST_W=7.4, HOVER_W=6.4;                                   // 颈腰半高（粗）：rest→hover 微收，丝偏粗
+
+  function rr(x, w){  // 满高圆角矩形子路径
+    const r=R, h=H;
+    return `M${x+r},0H${x+w-r}A${r},${r} 0 0 1 ${x+w},${r}V${h-r}A${r},${r} 0 0 1 ${x+w-r},${h}H${x+r}A${r},${r} 0 0 1 ${x},${h-r}V${r}A${r},${r} 0 0 1 ${x+r},0Z`;
+  }
+  function neck(aR, bL, wy){  // 连接颈：上下两条带水平切线的贝塞尔，中间收腰到 ±wy（拉丝）
+    const x0=aR-OV, x1=bL+OV, mid=(aR+bL)/2;
+    const tY=CY-NY, wT=CY-wy, bY=CY+NY, wB=CY+wy, cA=(x0+mid)/2, cB=(mid+x1)/2;
+    return `M${x0},${tY}C${cA},${tY} ${cA},${wT} ${mid},${wT}C${cB},${wT} ${cB},${tY} ${x1},${tY}`+
+           `L${x1},${bY}C${cB},${bY} ${cB},${wB} ${mid},${wB}C${cA},${wB} ${cA},${bY} ${x0},${bY}Z`;
+  }
+  let pL=0, pR=0, tgtL=0, tgtR=0, raf=null;
+  function build(){
+    const leftX=-SEP*pL, rightX=LW+GAP+SEP*pR;
+    const aR=leftX+LW, bL=rightX, gap=bL-aR;
+    const gn=Math.max(0, Math.min(1, gap/(GAP+SEP)));            // 0=相接 1=全拉开
+    const wy=REST_W - (REST_W-HOVER_W)*gn;                       // 颈腰：拉长时微收，整体偏粗
+    const d=rr(leftX,LW)+rr(rightX,LW)+neck(aR,bL,wy);
+    path.setAttribute('d', d); clip.setAttribute('d', d);        // 光晕裁剪用同一形状
+    lblL.style.transform=`translateX(${leftX}px)`;
+    lblR.style.transform=`translateX(${rightX-(LW+GAP)}px)`;
+  }
+  function tick(){
+    pL+=(tgtL-pL)*0.15; pR+=(tgtR-pR)*0.15;                      // 放慢拉丝（0.3→0.15），更柔不粗暴
+    build();
+    if(Math.abs(tgtL-pL)>0.002 || Math.abs(tgtR-pR)>0.002) raf=requestAnimationFrame(tick);
+    else { pL=tgtL; pR=tgtR; build(); raf=null; }
+  }
+  const kick=()=>{ if(!raf) raf=requestAnimationFrame(tick); };
+
+  // hover 砖红光晕：跟随鼠标（裁进胶囊形状）；hideT 兜住跨中线时 leave→enter 的瞬断
+  let hideT;
+  const moveGlow=e=>{
+    const r=seg.getBoundingClientRect();
+    glow.setAttribute('cx', (e.clientX-r.left)*(W/r.width));
+    glow.setAttribute('cy', (e.clientY-r.top)*(H/r.height));
+  };
+  [...seg.querySelectorAll('.lobe')].forEach(b=>{
+    const right=b.dataset.mode==='discover';
+    b.addEventListener('mouseenter',e=>{ right?tgtR=1:tgtL=1; clearTimeout(hideT); moveGlow(e); glow.style.opacity='1'; kick(); });
+    b.addEventListener('mousemove', moveGlow);
+    b.addEventListener('mouseleave',()=>{ right?tgtR=0:tgtL=0; hideT=setTimeout(()=>glow.style.opacity='0',50); kick(); });
+  });
+  build();
+})();
+</script>
+
+<!-- ── 背景网格对齐内容列（--col/--gx）+ 橡皮擦光标（rAF 节流） ── -->
+<script>
+(()=>{
+  const md=document.querySelector('#mode-discover'); if(!md) return;
+  const gb=md.querySelector('.grid-bg'), ink=md.querySelector('.ink');
+  const root=document.documentElement;
+  const hero=md.querySelector('.hero');
+  function alignGrid(){
+    const vw=innerWidth, boxW=Math.min(1180,vw), cw=boxW-112, col=cw/12, gx=(vw-boxW)/2+56;
+    root.style.setProperty('--col', col+'px'); root.style.setProperty('--gx', gx+'px');
+    if(hero){ const gr=gb.getBoundingClientRect(), hr=hero.getBoundingClientRect(); root.style.setProperty('--gy', (hr.top-gr.top)+'px'); }
+    drawInk();
+  }
+  // 墨层：把每个描边格子的「框 + 四角细十字」画进 SVG（坐标相对 #mode-discover），与背景网格同坐标系
+  const A=8;  // 十字臂长
+  const SVGNS='http://www.w3.org/2000/svg';
+  function drawInk(){
+    if(!ink) return;
+    const base=md.getBoundingClientRect();
+    ink.setAttribute('width', base.width); ink.setAttribute('height', base.height);  // 坐标系=px 1:1
+    let s='';
+    md.querySelectorAll('.cell').forEach(c=>{
+      const r=c.getBoundingClientRect();
+      if(r.width<4||r.height<4) return;                                 // 布局未就绪，跳过
+      const x=Math.round(r.left-base.left), y=Math.round(r.top-base.top), w=Math.round(r.width), h=Math.round(r.height);
+      s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`;
+      [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([px,py])=>{ s+=`<path d="M${px-A} ${py}H${px+A}M${px} ${py-A}V${py+A}"/>`; });
+    });
+    ink.innerHTML=s;
+  }
+  alignGrid();
+  addEventListener('resize', alignGrid, {passive:true});
+  addEventListener('load', alignGrid);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(alignGrid);   // 字体落位后重量
+  if(window.ResizeObserver){ const ro=new ResizeObserver(()=>alignGrid()); ro.observe(md); if(hero) ro.observe(hero); }  // 布局稳定即重绘
+  // 橡皮擦：坐标设在 #mode-discover（背景网格 + 墨层共享，同坐标系）→ 只擦线、文字保留
+  let cx=0,cy=0,queued=false;
+  const apply=()=>{ queued=false; const r=md.getBoundingClientRect(); md.style.setProperty('--mx',(cx-r.left)+'px'); md.style.setProperty('--my',(cy-r.top)+'px'); };
+  addEventListener('pointermove',e=>{ cx=e.clientX; cy=e.clientY; if(!queued){ queued=true; requestAnimationFrame(apply); } },{passive:true});
+})();
+</script>
+
+</body>
+</html>

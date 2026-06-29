@@ -1,0 +1,19 @@
+# secrets / local config
+config.local.js
+.env
+.env.*
+
+# per-user work state
+_desk.json
+.ingest.lock
+_ingest.log
+
+# ingest drop zone — keep the empty dir, ignore its contents
+_inbox/*
+!_inbox/.gitkeep
+
+# macOS
+.DS_Store
+
+# optional macOS launchd plist (personal paths)
+*.plist
