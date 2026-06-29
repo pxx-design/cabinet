@@ -73,18 +73,18 @@ setup is to let your agent do it.
 **Paste this into Claude Code:**
 
 ```text
-Clone and run Cabinet for me: git clone https://github.com/pxx-design/cabinet && cd cabinet,
-then run ./start.sh in the background so it opens in my browser. Tell me to click "connect"
-(bottom-left) and pick the cabinet folder. After that, whenever I paste a design reference
-into the page and hit "ingest", run /ingest to break it into reusable techniques (spec: INGEST.md).
+Set up Cabinet for me:
+1. git clone https://github.com/pxx-design/cabinet && cd cabinet
+2. run ./start.sh in the background so it opens in my browser, then tell me to click
+   "connect" (bottom-left) and pick the cabinet folder
+3. install the /translate command globally: copy setup/translate.md to
+   ~/.claude/commands/translate.md, replacing __CABINET_DIR__ with this folder's absolute path
+After that: when I paste a reference into the page and hit "ingest", run /ingest.
 ```
 
-Then, **in any other project**, paste this to use what you collected:
-
-```text
-Read the techniques I picked in <path-to>/cabinet/_desk.json and apply them to <what I'm
-building> — follow each move's "tune" boundary: adapt the technique, never copy the reference.
-```
+That one paste also installs a global **`/translate`** — so in any other project you
+just type `/translate` and your agent applies the moves you picked (leading with each
+move's instruction, respecting its borrowing boundary). No long prompt to retype.
 
 <details>
 <summary>Prefer to set it up by hand?</summary>

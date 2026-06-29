@@ -64,17 +64,16 @@ coding agent 才是「干活」的地方。所以最快的方式，是让 agent 
 **把这段粘给 Claude Code：**
 
 ```text
-帮我把 Cabinet 跑起来：git clone https://github.com/pxx-design/cabinet && cd cabinet，
-然后在后台运行 ./start.sh 让它在我的浏览器里打开。告诉我点左下「连接」、选 cabinet 文件夹。
-之后我每次把设计参考粘进页面、点「入库」，你就运行 /ingest 把它拆成可复用的手法（规范见 INGEST.md）。
+帮我装好 Cabinet：
+1. git clone https://github.com/pxx-design/cabinet && cd cabinet
+2. 在后台运行 ./start.sh 让它在我浏览器里打开，然后告诉我点左下「连接」、选 cabinet 文件夹
+3. 把 /translate 命令装成全局：把 setup/translate.md 复制到 ~/.claude/commands/translate.md，
+   并把文件里的 __CABINET_DIR__ 替换成本文件夹的绝对路径
+之后：我把参考粘进页面、点「入库」，你就运行 /ingest。
 ```
 
-然后，**在任何别的项目里**，粘这段来用你收集的手法：
-
-```text
-读 <cabinet 路径>/_desk.json 里我收的手法，把它们用到 <我正在做的东西> 上——
-遵守每条手法的「tune」边界：迁移技法，别照搬参考图。
-```
+这一段也顺手装好了全局 **`/translate`**——以后在任何别的项目里只敲 `/translate`，
+agent 就会把你收的手法用进去（以每条手法的说法为主、守住借鉴边界），不用再粘长 prompt。
 
 <details>
 <summary>想手动装？</summary>
