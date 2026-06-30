@@ -1524,7 +1524,7 @@
   function toggleCalibrate(){
     calibrating = !calibrating;
     renderPlate();
-    flash(calibrating ? '校准开 · 拖圆点到准确位置，松手自动写回' : '校准关');
+    flash(calibrating ? (window.LANG==='en'?'Calibrate on · drag the dots into place; release to write back':'校准开 · 拖圆点到准确位置，松手自动写回') : (window.LANG==='en'?'Calibrate off':'校准关'));
   }
   function startAnchorDrag(ev, facet, el, inner){
     ev.preventDefault(); ev.stopPropagation();
@@ -1561,6 +1561,7 @@
 
   function renderPlate(){
     const e = DATA[state.cur];
+    const EN = window.LANG==='en';
     $('#drawer').classList.toggle('wide', (e.ar||1) > 1.4);
     const plate = $('#plate');
     plate.classList.toggle('calibrating', calibrating);
@@ -1571,7 +1572,7 @@
       a.className = 'anchor' + (state.picked.has(f.id)?' picked':'') + (f.at[0]>72?' flip':'') + (calibrating?' cal':'');
       a.dataset.fid = f.id;
       a.style.left = f.at[0]+'%'; a.style.top = f.at[1]+'%';
-      a.innerHTML = `<span class="dot" style="animation-delay:${(i*0.45).toFixed(2)}s">${i+1}</span><span class="tag">${f.zh}</span>`;
+      a.innerHTML = `<span class="dot" style="animation-delay:${(i*0.45).toFixed(2)}s">${i+1}</span><span class="tag">${EN?(f.en||f.zh):f.zh}</span>`;
       a.onmouseenter = ()=>setHot(f.id,true);
       a.onmouseleave = ()=>setHot(f.id,false);
       if(calibrating) a.onpointerdown = ev=>startAnchorDrag(ev, f, a, inner);
@@ -1580,20 +1581,20 @@
     });
     $('#plate-caption').innerHTML =
       `<span class="no">№${e.id}</span>`+
-      `<span>${e.facets.length} 手法</span>`+
+      `<span>${e.facets.length} ${EN?'moves':'手法'}</span>`+
       `<span class="cap-gap"></span>`+
-      `<span class="nav-arrows"><button id="prev" title="上一张 ←">←</button><button id="next" title="下一张 →">→</button></span>`+
+      `<span class="nav-arrows"><button id="prev" title="${EN?'Previous ←':'上一张 ←'}">←</button><button id="next" title="${EN?'Next →':'下一张 →'}">→</button></span>`+
       `<span>${state.cur+1} / ${DATA.length}</span>`+
-      `<button class="plate-cal${calibrating?' on':''}" id="plate-cal" title="校准锚点 — 拖圆点到准确位置，松手写回 data-v3.js">✛ 校准</button>`+
-      `<button class="plate-trash" id="plate-trash" title="删除这张 — 可在回收站找回">${ICO.trash} 删除</button>`;
+      `<button class="plate-cal${calibrating?' on':''}" id="plate-cal" title="${EN?'Calibrate anchors — drag the dots into place; releasing writes back to data-v3.js':'校准锚点 — 拖圆点到准确位置，松手写回 data-v3.js'}">✛ ${EN?'Calibrate':'校准'}</button>`+
+      `<button class="plate-trash" id="plate-trash" title="${EN?'Delete this — restorable from the recycle bin':'删除这张 — 可在回收站找回'}">${ICO.trash} ${EN?'Delete':'删除'}</button>`;
     $('#prev').onclick = ()=>nav(-1);
     $('#next').onclick = ()=>nav(1);
     $('#plate-cal').onclick = toggleCalibrate;
     $('#plate-trash').onclick = ()=>trashEntry(DATA[state.cur].id);
     const sw = $('#swatches');
     sw.innerHTML = (e.colors||[]).map(c=>
-      `<button class="sw" style="background:${c}" title="点击复制 ${c}" data-hex="${c}"></button>`).join('');
-    sw.querySelectorAll('.sw').forEach(b=>{ b.onclick = ()=>copyText(b.dataset.hex, '已复制 '+b.dataset.hex); });
+      `<button class="sw" style="background:${c}" title="${EN?'click to copy ':'点击复制 '}${c}" data-hex="${c}"></button>`).join('');
+    sw.querySelectorAll('.sw').forEach(b=>{ b.onclick = ()=>copyText(b.dataset.hex, (EN?'Copied ':'已复制 ')+b.dataset.hex); });
   }
   function nav(d){ state.cur=(state.cur+d+DATA.length)%DATA.length; persist(); renderDrawer(); }
 
