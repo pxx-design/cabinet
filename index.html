@@ -666,7 +666,7 @@
   <!-- 右上工具区：已收（产出 → 给「转译」，下拉气泡）+ 回收站（软删可找回，右侧图廊面板）-->
   <div class="head-tools">
     <span class="ht-wrap">
-      <button class="head-btn" id="pick-btn" title="已收的手法 — 给「转译」用">已收 <b id="pick-n">0</b><svg class="chev" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="head-btn" id="pick-btn" title="已收的手法 — 给「转译」用"><span id="pick-lbl">已收</span> <b id="pick-n">0</b><svg class="chev" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="pick-pop" id="pick-pop">
         <div class="pp-head"><span>已收的手法 · 给「转译」用</span><button class="pp-clear" id="pick-clear">清空</button></div>
         <div class="pp-body" id="pick-chips"></div>
@@ -769,6 +769,86 @@
     || /\.pages\.dev$/.test(location.hostname)
     || new URLSearchParams(location.search).has('demo');
   if(window.CABINET_DEMO) document.documentElement.classList.add('demo');
+</script>
+
+<!-- ── i18n 核心（全局；引擎+应用共用。zh* 自动中文、余英文、可手动切换存 localStorage）── -->
+<script>
+(function(){
+  const urlLang = new URLSearchParams(location.search).get('lang');
+  const saved = localStorage.getItem('cabinet.lang');
+  window.LANG = (urlLang==='zh'||urlLang==='en') ? urlLang
+    : (saved==='zh'||saved==='en') ? saved
+    : ((navigator.language||'en').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  if(urlLang==='zh'||urlLang==='en') localStorage.setItem('cabinet.lang', urlLang);   // ?lang= 覆盖并记住
+  // 18 个受控感觉词：存储仍是中文 token，这是英文模式的显示标签
+  window.FEEL_EN = {轻盈:'Airy',梦幻:'Dreamy',柔和:'Soft',自然:'Organic',安静:'Quiet',沉浸:'Immersive',玩味:'Playful',未来:'Futuristic',能量:'Energetic',冲击力:'Striking',精致:'Refined',典藏:'Timeless',仪式感:'Ceremonial',神秘:'Mysterious',警觉:'Alert',科技:'Technical',冷静:'Calm',严谨:'Precise'};
+  window.feelLabel = w => window.LANG==='en' ? (window.FEEL_EN[w]||w) : w;
+  window.FEEL_EN2ZH = {}; for(const z in window.FEEL_EN) window.FEEL_EN2ZH[window.FEEL_EN[z].toLowerCase()] = z;
+  // UI 串字典（key=中文源；flash/简单串）
+  window.T = {
+    '连接':'Connect','重新连接':'Reconnect','已连接':'Connected','入库':'Ingest','清空':'Clear',
+    '已收':'Saved','回收站':'Recycle bin','找回':'Restore','恢复':'Restore'
+  };
+  window.t = zh => window.LANG==='en' ? (window.T[zh]||zh) : zh;
+
+  // 静态 chrome：选择器 → {zh,en}（html=用 innerHTML / attr=改属性）
+  const STATIC = [
+    {sel:'.brand-name', html:1, zh:'灵感<b>库</b>', en:'Cabi<b>net</b>'},
+    {sel:'.brand', attr:'title', zh:'灵感库 — 把感觉翻译给 AI', en:'Cabinet — translate a feeling into something an AI can build'},
+    {sel:'.lobe[data-mode="canvas"] .seg-lbl', html:1, zh:'读灵感<span class="seg-dot"></span>', en:'Decode<span class="seg-dot"></span>'},
+    {sel:'.lobe[data-mode="discover"] .seg-lbl', html:1, zh:'找灵感<span class="seg-dot"></span>', en:'Discover<span class="seg-dot"></span>'},
+    {sel:'#pick-lbl', zh:'已收', en:'Saved'},
+    {sel:'#pick-btn', attr:'title', zh:'已收的手法 — 给「转译」用', en:'Saved moves — for /translate'},
+    {sel:'#pick-clear', zh:'清空', en:'Clear'},
+    {sel:'#pick-pop .pp-head span', zh:'已收的手法 · 给「转译」用', en:'Saved moves · for /translate'},
+    {sel:'#pick-pop .pp-foot', zh:'这些写进 _desk.json，「转译」直接读', en:'These go to _desk.json; /translate reads them directly'},
+    {sel:'#trash-btn', attr:'title', zh:'回收站 — 恢复删除的图', en:'Recycle bin — restore deleted images'},
+    {sel:'#side-clear', zh:'清空', en:'Clear'},
+    {sel:'#side-close', attr:'title', zh:'关闭 esc', en:'Close · esc'},
+    {sel:'#q', attr:'placeholder', zh:'说出你要的感觉——安静 / 典藏 / 冲击力 …', en:'Name a feeling — Airy / Timeless / Striking …'},
+    {sel:'#hint .ht', zh:'单击一张图看拆解 · 输入或点感觉词召唤同类 · 滚轮缩放 · 拖拽漫游', en:'Click an image to decode it · type or tap a feeling to summon its kind · scroll to zoom · drag to roam'},
+    {sel:'#conn-f', attr:'title', zh:'连接文件夹 — 选你下载的 cabinet 文件夹（含 data-v3.js）；收的手法才能写入 _desk.json 给「转译」用', en:'Connect a folder — pick the cabinet folder you downloaded (it has data-v3.js); saved moves then write to _desk.json for /translate'},
+    {sel:'#conn-f-txt', zh:'连接', en:'Connect'},
+    {sel:'#conn-hint .ch-t', zh:'连接后，收的手法才存得下', en:'Connect so your saved moves persist'},
+    {sel:'#conn-hint .ch-s', html:1, zh:'<li>点下面「<b>连接</b>」</li><li>选这个 <b>cabinet</b> 文件夹</li><li>点「<b>允许</b>」· 只需一次</li>', en:'<li>Click <b>Connect</b> below</li><li>Pick this <b>cabinet</b> folder</li><li>Click <b>Allow</b> · just once</li>'},
+    {sel:'#conn-hint .ch-x', attr:'title', zh:'不再提示', en:"Don't show again"},
+    {sel:'#drop .box', zh:'松手暂存入库', en:'Drop to stage for ingest'},
+    {sel:'.hero .eyebrow', zh:'找灵感 · 上游', en:'Discover · upstream'},
+    {sel:'.hero h1', html:1, zh:'灵感卡顿，<br>先去逛逛', en:'Stuck for inspiration?<br>Go browse.'},
+    {sel:'.hero p', html:1, zh:'私藏的设计参考网站。<b>从综合参考到真实页面</b>，日常漫游，不定时更新……', en:'Hand-picked design reference sites. <b>From awards to real product UI</b> — roam daily, updated now and then…'}
+  ];
+  window.applyStatic = function(){
+    document.documentElement.lang = window.LANG;
+    document.title = window.LANG==='en' ? 'Cabinet — decode ⇄ discover' : '灵感库 4.0 · 画布 ⇄ 找灵感';
+    STATIC.forEach(s=>{
+      const v = s[window.LANG]; if(v==null) return;
+      document.querySelectorAll(s.sel).forEach(el=>{
+        if(s.attr) el.setAttribute(s.attr, v);
+        else if(s.html) el.innerHTML = v;
+        else el.textContent = v;
+      });
+    });
+  };
+  window.setLang = function(l){
+    window.LANG = l; localStorage.setItem('cabinet.lang', l);
+    window.applyStatic();
+    const tg=document.getElementById('lang-toggle'); if(tg) tg.textContent = l==='en' ? '中' : 'EN';
+    document.dispatchEvent(new CustomEvent('cabinet:lang'));   // 引擎 rAF 自动跟；应用监听重渲染
+  };
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // 注入「中/EN」切换钮到右上工具区
+    const tools=document.querySelector('.head-tools');
+    if(tools && !document.getElementById('lang-toggle')){
+      const b=document.createElement('button');
+      b.id='lang-toggle'; b.className='head-btn'; b.type='button';
+      b.textContent = window.LANG==='en' ? '中' : 'EN';
+      b.title = 'Language / 语言';
+      b.onclick = ()=> window.setLang(window.LANG==='en'?'zh':'en');
+      tools.insertBefore(b, tools.firstChild);
+    }
+    window.applyStatic();
+  });
+})();
 </script>
 
 <!-- ── 画布引擎（demo-d 引力场，沿用；加 pause/resume 供模式切换）── -->
@@ -934,7 +1014,9 @@
     all.forEach(it=>{
       let sc=0;
       it.feels.forEach((c,w)=>toks.forEach(t=>{
+        const we=(window.FEEL_EN[w]||'').toLowerCase();
         if(w.includes(t)||t.includes(w)) sc+=3*c;
+        else if(we && (we.includes(t)||t.includes(we))) sc+=3*c;   // 英文标签匹配（airy→轻盈）
         else if([...t].some(ch=>w.includes(ch))) sc+=c;
       }));
       it.e.facets.forEach(f=>toks.forEach(t=>{
@@ -1131,7 +1213,7 @@
       ctx.font='12px "PingFang SC"'; ctx.fillStyle='#1a1a1a';
       ctx.fillText(it.e.title, sx, sy+h2/2+20);
       ctx.font='10px "PingFang SC"'; ctx.fillStyle='#8a8478';
-      ctx.fillText([...it.feels.keys()].join(' · '), sx, sy+h2/2+36);
+      ctx.fillText([...it.feels.keys()].map(window.feelLabel).join(' · '), sx, sy+h2/2+36);
     }
   }
 
@@ -1156,9 +1238,9 @@
         ctx.globalAlpha=wA*(on?.95:.5);
         ctx.fillStyle=on?'#b0402f':'#a59c8b';
         ctx.font=(on?'600 ':'400 ')+'18px Georgia, "Songti SC", serif';
-        ctx.fillText(o.w, sx, sy-9);
+        ctx.fillText(window.feelLabel(o.w), sx, sy-9);
         ctx.globalAlpha=wA*(on?.7:.38); ctx.fillStyle=on?'#b0402f':'#bdb6a8'; ctx.font='10px "PingFang SC"';
-        ctx.fillText(o.n+' 手法', sx, sy+6);
+        ctx.fillText(o.n+(window.LANG==='en'?' moves':' 手法'), sx, sy+6);
         ctx.restore();
         wordHit.push({w:o.w, x:sx, y:sy-4, r:54});
       });
@@ -1204,7 +1286,7 @@
         ctx.textAlign='left';
         ctx.fillStyle=near?'#1a1a1a':'#3a352e';
         ctx.font='600 14px "PingFang SC"';
-        ctx.fillText(f.zh, lx, ly-3);
+        ctx.fillText(window.LANG==='en'?(f.en||f.zh):f.zh, lx, ly-3);
         ctx.fillStyle='#8a8478'; ctx.font='10.5px "PingFang SC"';
         ctx.fillText(f.en, lx, ly+13);
       });
@@ -1244,24 +1326,32 @@
   };
 
   const SITES = [
-    {name:'CSS Design Awards', url:'https://www.cssdesignawards.com/', zone:'综合', cat:'综合', score:8.5, img:'shots/cssda.jpg', desc:'老牌网页设计奖，每日甄选全球最佳网站，评审维度细到交互与创新。'},
-    {name:'Awwwards',          url:'https://www.awwwards.com/',        zone:'综合', cat:'综合', score:9.2, img:'shots/awwwards.jpg', desc:'最权威的网页设计奖，前沿视觉的风向标。每天甄选一个 Site of the Day。'},
-    {name:'Variant',           url:'https://variant.com/',             zone:'综合', cat:'生成式', score:7.8, img:'shots/variant.jpg', desc:'“想法不用解释，直接滚着看”——把感觉翻成一屏屏现成设计的生成式画廊。'},
-    {name:'Godly',             url:'https://godly.website/',           zone:'综合', cat:'综合', score:9.5, img:'shots/godly.jpg', vid:'shots/godly.mp4', desc:'极度挑剔的网站灵感聚合，质量门槛很高，几乎张张能直接当审美标杆。'},
-    {name:'Curations Supply',  url:'https://curations.supply/',        zone:'综合', cat:'综合', score:8.0, img:'shots/curations.jpg', desc:'设计资源的精选目录，把各路灵感站分门别类，找特定类型时好用。'},
-    {name:'Sutera',      url:'https://www.sutera.ch/',   zone:'单站', cat:'作品集', score:9.0, img:'folio/sutera.jpg',  vid:'folio/sutera.mp4',  desc:'个人作品集，editorial 排版配漂浮 3D 物件'},
-    {name:'Bruno Simon', url:'https://bruno-simon.com/', zone:'单站', cat:'作品集', score:9.5, img:'folio/bruno.jpg',   desc:'Three.js 大神的 3D 交互作品集'},
-    {name:'Michele Du',  url:'https://micheledu.com/',   zone:'单站', cat:'作品集', score:9.0, img:'folio/michele.jpg', vid:'folio/michele.mp4', desc:'交互设计师作品集，叙事范本'},
-    {name:'Just McKissick', url:'https://justmckissick.com/', zone:'单站', cat:'作品集', score:9.0, img:'folio/justmckissick.jpg', desc:'产品设计师个人站，Meta / Moody\'s 案例叙事，履历即作品的范本'},
-    {name:'Floema',      url:'https://www.floema.com/',  zone:'单站', cat:'品牌站', score:9.0, img:'folio/floema.jpg', vid:'folio/floema2.mp4', desc:'城市家具品牌站，奶油底 editorial 排版，连体胶囊导航是切换器范本'},
-    {name:'SuperrBook',  url:'https://www.superr.ai/',   zone:'单站', cat:'品牌站', score:8.5, img:'folio/superr2.jpg', desc:'学生 AI 手写本品牌落地页，童趣插画 + 利落叙事把硬件讲软'},
-    {name:'Refero',            url:'https://refero.design/',     zone:'专项', cat:'真实 UI',  score:8.5, img:'shots/refero.jpg', desc:'真实产品的界面截图库，可按页面与流程检索，看成熟产品的真实设计决策。'},
-    {name:'Mobbin',            url:'https://mobbin.com/',        zone:'专项', cat:'真实 UI',  score:8.5, img:'shots/mobbin.jpg', desc:'海量真实 App 截图，按 App、流程、控件检索，移动端设计的活字典。'},
-    {name:'Lapa Ninja',        url:'https://www.lapa.ninja/',    zone:'专项', cat:'落地页',   score:8.0, img:'shots/lapa.jpg', desc:'落地页专门画廊，按行业与板块分类，结构清晰，落地页与个人站灵感首选。'},
-    {name:'Component Gallery', url:'https://component.gallery/', zone:'专项', cat:'设计系统', score:8.0, img:'shots/component.jpg', desc:'跨产品的组件设计参考，同一个组件看各家怎么做，搭设计系统必看。'},
+    {name:'CSS Design Awards', url:'https://www.cssdesignawards.com/', zone:'综合', cat:'综合', score:8.5, img:'shots/cssda.jpg', desc:'老牌网页设计奖，每日甄选全球最佳网站，评审维度细到交互与创新。', desc_en:"A veteran web design award; daily picks of the world's best sites, judged down to interaction and innovation."},
+    {name:'Awwwards',          url:'https://www.awwwards.com/',        zone:'综合', cat:'综合', score:9.2, img:'shots/awwwards.jpg', desc:'最权威的网页设计奖，前沿视觉的风向标。每天甄选一个 Site of the Day。', desc_en:'The most authoritative web design award — a bellwether for cutting-edge visuals. One Site of the Day, every day.'},
+    {name:'Variant',           url:'https://variant.com/',             zone:'综合', cat:'生成式', score:7.8, img:'shots/variant.jpg', desc:'“想法不用解释，直接滚着看”——把感觉翻成一屏屏现成设计的生成式画廊。', desc_en:'"No need to explain the idea — just scroll." A generative gallery that turns a feeling into screen after screen of ready-made design.'},
+    {name:'Godly',             url:'https://godly.website/',           zone:'综合', cat:'综合', score:9.5, img:'shots/godly.jpg', vid:'shots/godly.mp4', desc:'极度挑剔的网站灵感聚合，质量门槛很高，几乎张张能直接当审美标杆。', desc_en:'A ruthlessly curated feed of website inspiration — the bar is so high almost every one could be a benchmark.'},
+    {name:'Curations Supply',  url:'https://curations.supply/',        zone:'综合', cat:'综合', score:8.0, img:'shots/curations.jpg', desc:'设计资源的精选目录，把各路灵感站分门别类，找特定类型时好用。', desc_en:'A curated directory of design resources, sorting inspiration sites by kind — handy when you need a specific type.'},
+    {name:'Sutera',      url:'https://www.sutera.ch/',   zone:'单站', cat:'作品集', score:9.0, img:'folio/sutera.jpg',  vid:'folio/sutera.mp4',  desc:'个人作品集，editorial 排版配漂浮 3D 物件', desc_en:'A personal portfolio — editorial typography with floating 3D objects.'},
+    {name:'Bruno Simon', url:'https://bruno-simon.com/', zone:'单站', cat:'作品集', score:9.5, img:'folio/bruno.jpg',   desc:'Three.js 大神的 3D 交互作品集', desc_en:'The 3D interactive portfolio of a Three.js master.'},
+    {name:'Michele Du',  url:'https://micheledu.com/',   zone:'单站', cat:'作品集', score:9.0, img:'folio/michele.jpg', vid:'folio/michele.mp4', desc:'交互设计师作品集，叙事范本', desc_en:"An interaction designer's portfolio — a model of narrative."},
+    {name:'Just McKissick', url:'https://justmckissick.com/', zone:'单站', cat:'作品集', score:9.0, img:'folio/justmckissick.jpg', desc:'产品设计师个人站，Meta / Moody\'s 案例叙事，履历即作品的范本', desc_en:"A product designer's site — Meta / Moody's case narratives; a résumé that is itself the work."},
+    {name:'Floema',      url:'https://www.floema.com/',  zone:'单站', cat:'品牌站', score:9.0, img:'folio/floema.jpg', vid:'folio/floema2.mp4', desc:'城市家具品牌站，奶油底 editorial 排版，连体胶囊导航是切换器范本', desc_en:'An urban-furniture brand site — cream-ground editorial layout; its conjoined-pill nav is a toggle worth studying.'},
+    {name:'SuperrBook',  url:'https://www.superr.ai/',   zone:'单站', cat:'品牌站', score:8.5, img:'folio/superr2.jpg', desc:'学生 AI 手写本品牌落地页，童趣插画 + 利落叙事把硬件讲软', desc_en:'A landing page for a student AI notebook — playful illustration and crisp storytelling make hardware feel soft.'},
+    {name:'Refero',            url:'https://refero.design/',     zone:'专项', cat:'真实 UI',  score:8.5, img:'shots/refero.jpg', desc:'真实产品的界面截图库，可按页面与流程检索，看成熟产品的真实设计决策。', desc_en:'A library of real product UI screenshots, searchable by page and flow — the real design decisions of mature products.'},
+    {name:'Mobbin',            url:'https://mobbin.com/',        zone:'专项', cat:'真实 UI',  score:8.5, img:'shots/mobbin.jpg', desc:'海量真实 App 截图，按 App、流程、控件检索，移动端设计的活字典。', desc_en:'A vast trove of real app screenshots, searchable by app, flow and component — a living dictionary of mobile design.'},
+    {name:'Lapa Ninja',        url:'https://www.lapa.ninja/',    zone:'专项', cat:'落地页',   score:8.0, img:'shots/lapa.jpg', desc:'落地页专门画廊，按行业与板块分类，结构清晰，落地页与个人站灵感首选。', desc_en:'A gallery devoted to landing pages, sorted by industry and section — clean structure; a go-to for landing-page and personal-site ideas.'},
+    {name:'Component Gallery', url:'https://component.gallery/', zone:'专项', cat:'设计系统', score:8.0, img:'shots/component.jpg', desc:'跨产品的组件设计参考，同一个组件看各家怎么做，搭设计系统必看。', desc_en:'Cross-product component references — see how different teams build the same component; essential when assembling a design system.'},
   ];
 
   const ZONES = ['综合','单站','专项'];
+  // discover 显示映射：zone/cat 仍用中文作分组逻辑键，这里只管显示
+  const _EN = window.LANG==='en';
+  const ZONE_EN = {综合:'General', 单站:'Single sites', 专项:'Specialized'};
+  const CAT_EN  = {综合:'General', 生成式:'Generative', 作品集:'Portfolio', 品牌站:'Brand site', '真实 UI':'Real UI', 落地页:'Landing pages', 设计系统:'Design systems'};
+  const zl = z => _EN ? (ZONE_EN[z]||z) : z;
+  const cl = c => _EN ? (CAT_EN[c]||c) : c;
+  const dl = s => _EN ? (s.desc_en||s.desc) : s.desc;
+  const VISIT = _EN ? 'Visit ↗' : '访问 ↗';
 
   let html='', rowIdx=0;
   ZONES.forEach(z=>{
@@ -1271,15 +1361,15 @@
     let headExtra='';
     if(z==='单站'){
       const cc={}; list.forEach(s=>cc[s.cat]=(cc[s.cat]||0)+1);
-      headExtra = `<span class="grp-inline">`+['作品集','品牌站'].filter(c=>cc[c]).map(c=>`${c} <b>${cc[c]}</b>`).join(' · ')+`</span>`;
+      headExtra = `<span class="grp-inline">`+['作品集','品牌站'].filter(c=>cc[c]).map(c=>`${cl(c)} <b>${cc[c]}</b>`).join(' · ')+`</span>`;
     }
-    html += `<section class="zone"><div class="zone-head"><h3>${z}</h3><span class="cnt">${list.length} 站</span>${headExtra}<span class="ln"></span></div>`;
+    html += `<section class="zone"><div class="zone-head"><h3>${zl(z)}</h3><span class="cnt">${_EN?list.length+' sites':list.length+' 站'}</span>${headExtra}<span class="ln"></span></div>`;
     if(z==='单站'){
       // 按 cat 分组：品牌站（落地页=招贴）钉墙在上，作品集（书）上架在下
       const PINNED = new Set(['品牌站']);
       const cats=[], byCat={};
       list.forEach(s=>{ if(!byCat[s.cat]){byCat[s.cat]=[]; cats.push(s.cat);} byCat[s.cat].push(s); });
-      const veil = s => `<div class="veil"><span class="vk">${s.cat}</span><span class="vn">${s.name}</span><span class="vd">${s.desc}</span><span class="vh">${host(s.url)}</span><span class="vgo">访问 ↗</span></div>`;
+      const veil = s => `<div class="veil"><span class="vk">${cl(s.cat)}</span><span class="vn">${s.name}</span><span class="vd">${dl(s)}</span><span class="vh">${host(s.url)}</span><span class="vgo">${VISIT}</span></div>`;
       const frame = s => `<div class="frame">${imgTag(s)}${veil(s)}</div>`;
 
       // —— 钉墙（每框一条倒 V 挂绳 + 朱砂图钉），cards 缩小、轻微自然下垂 ——
@@ -1316,14 +1406,14 @@
         <div class="row">
           <a class="shot" href="${s.url}" target="_blank" rel="noopener"><div class="frame">
             ${imgTag(s)}
-            <div class="veil"><span class="vk">${s.cat}</span><span class="vn">${s.name}</span><span class="vgo">访问 ↗</span></div>
+            <div class="veil"><span class="vk">${cl(s.cat)}</span><span class="vn">${s.name}</span><span class="vgo">${VISIT}</span></div>
           </div></a>
           <div class="info cell">
-            <div class="tagline"><span class="no">№ ${pad2(rowIdx)}</span><span>${s.cat}</span></div>
+            <div class="tagline"><span class="no">№ ${pad2(rowIdx)}</span><span>${cl(s.cat)}</span></div>
             <h2>${s.name}</h2>
             <div class="host">${host(s.url)}</div>
-            <div class="desc">${s.desc}</div>
-            <a class="visit" href="${s.url}" target="_blank" rel="noopener">访问 ↗</a>
+            <div class="desc">${dl(s)}</div>
+            <a class="visit" href="${s.url}" target="_blank" rel="noopener">${VISIT}</a>
           </div>
         </div>`; }).join('');
     }else{
@@ -1331,9 +1421,9 @@
         <a class="mcard" href="${s.url}" target="_blank" rel="noopener">
           <div class="shot"><div class="frame">
             ${imgTag(s)}
-            <div class="veil"><span class="vk">${s.cat}</span><span class="vd">${s.desc}</span><span class="vgo">访问 ↗</span></div>
+            <div class="veil"><span class="vk">${cl(s.cat)}</span><span class="vd">${dl(s)}</span><span class="vgo">${VISIT}</span></div>
           </div></div>
-          <div class="mtag">${s.cat}</div>
+          <div class="mtag">${cl(s.cat)}</div>
           <div class="mname">${s.name}</div>
           <div class="mhost">${host(s.url)}</div>
         </a>`).join('') + `</div>`;
@@ -1384,7 +1474,7 @@
   /* ════ 演示模式（Vercel / ?demo=1）：纯浏览可玩，写盘/喂图转下载 CTA ════ */
   const CABINET_DEMO = !!window.CABINET_DEMO;
   const REPO_URL = window.REPO_URL || 'https://github.com/pxx-design/cabinet';
-  const DEMO_LANG = (navigator.language||'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  const DEMO_LANG = window.LANG;
   const DEMO_T = {
     zh:{ cta:'在线体验版，创建自己的<b>灵感库 →</b>',
          head:'你收的手法',
@@ -1506,19 +1596,22 @@
     e.facets.forEach(f=>f.feels.forEach(w=>fm.set(w,(fm.get(w)||0)+1)));
     const feels = [...fm.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
     let h = `<div class="panel-meta">№${e.id} · ${e.family}</div><h2>${e.title}</h2>`;
-    h += `<div class="feel-line"><span class="lab">感觉</span>`;
-    h += feels.map(w=>`<button class="feel" data-feel="${w}">${w}</button>`).join('');
-    h += `<span class="feel-hint">点感觉词 = 整组收；点手法卡 = 在画布看同款</span></div>`;
+    const EN = window.LANG==='en';
+    h += `<div class="feel-line"><span class="lab">${EN?'Feel':'感觉'}</span>`;
+    h += feels.map(w=>`<button class="feel" data-feel="${w}">${window.feelLabel(w)}</button>`).join('');
+    h += `<span class="feel-hint">${EN?'tap a feeling = save the set · tap a move = see its kind on the canvas':'点感觉词 = 整组收；点手法卡 = 在画布看同款'}</span></div>`;
     e.facets.forEach((f,i)=>{
       const picked = state.picked.has(f.id);
-      h += `<div class="move${picked?' picked':''}" data-fid="${f.id}" title="在画布上看同款">
+      const term = EN ? (f.en||f.zh) : f.zh;   // 英文模式 en 术语为主、zh 作副
+      const sub  = EN ? f.zh : f.en;
+      h += `<div class="move${picked?' picked':''}" data-fid="${f.id}" title="${EN?'see its kind on the canvas':'在画布上看同款'}">
         <span class="num">${i+1}</span>
-        <span class="zh">${f.zh}</span>
+        <span class="zh">${term}</span>
         <span class="acts">
-          <button class="act pick${picked?' on':''}" data-pick="${f.id}" title="${picked?'已收 · 点击移出':'收 — 给「转译」用'}">${picked?ICO.check:ICO.plus}</button>
-          <a class="act" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(f.q)}" target="_blank" rel="noopener" title="搜同类视觉" onclick="event.stopPropagation()">${ICO.search}</a>
+          <button class="act pick${picked?' on':''}" data-pick="${f.id}" title="${picked?(EN?'Saved · click to remove':'已收 · 点击移出'):(EN?'Save — for /translate':'收 — 给「转译」用')}">${picked?ICO.check:ICO.plus}</button>
+          <a class="act" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(f.q)}" target="_blank" rel="noopener" title="${EN?'search similar visuals':'搜同类视觉'}" onclick="event.stopPropagation()">${ICO.search}</a>
         </span>
-        <span class="en">${f.en}</span>
+        <span class="en">${sub}</span>
         <span class="mech">${f.mech}</span>
       </div>`;
     });
