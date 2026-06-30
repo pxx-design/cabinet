@@ -787,7 +787,14 @@
   // UI 串字典（key=中文源；flash/简单串）
   window.T = {
     '连接':'Connect','重新连接':'Reconnect','已连接':'Connected','入库':'Ingest','清空':'Clear',
-    '已收':'Saved','回收站':'Recycle bin','找回':'Restore','恢复':'Restore'
+    '已收':'Saved','回收站':'Recycle bin','找回':'Restore','恢复':'Restore',
+    '已移出待入库':'Removed from queue',
+    '已入队 — 装了 watcher 会自动拆；否则在 coding agent 里运行 /ingest':'Queued — the watcher auto-parses if installed; otherwise run /ingest in your coding agent',
+    '先点左下「连接」':'Click "Connect" (bottom-left) first',
+    '已重置 — 可重新点「入库」':'Reset — you can click "Ingest" again',
+    '未授权写入':'Write permission denied',
+    '这不是项目根目录（缺 data-v3.js）——请选你下载的 cabinet 文件夹':"That's not the project root (no data-v3.js) — pick the cabinet folder you downloaded",
+    '浏览器在 file:// 下拦了授权——跑 ./start.sh 走 localhost 打开':'The browser blocked access on file:// — run ./start.sh to open over localhost'
   };
   window.t = zh => window.LANG==='en' ? (window.T[zh]||zh) : zh;
 
@@ -813,8 +820,9 @@
     {sel:'#conn-hint .ch-s', html:1, zh:'<li>点下面「<b>连接</b>」</li><li>选这个 <b>cabinet</b> 文件夹</li><li>点「<b>允许</b>」· 只需一次</li>', en:'<li>Click <b>Connect</b> below</li><li>Pick this <b>cabinet</b> folder</li><li>Click <b>Allow</b> · just once</li>'},
     {sel:'#conn-hint .ch-x', attr:'title', zh:'不再提示', en:"Don't show again"},
     {sel:'#drop .box', zh:'松手暂存入库', en:'Drop to stage for ingest'},
+    {sel:'#tray-info', html:1, zh:'待入库 <b>0</b> 张 · <span class="cmd">⌘V</span> 粘贴或拖图进来', en:'<span class="cmd">⌘V</span> paste or drop images here'},
     {sel:'.hero .eyebrow', zh:'找灵感 · 上游', en:'Discover · upstream'},
-    {sel:'.hero h1', html:1, zh:'灵感卡顿，<br>先去逛逛', en:'Stuck for inspiration?<br>Go browse.'},
+    {sel:'.hero h1', html:1, zh:'灵感卡顿，<br>先去逛逛', en:'Stuck?<br>Go browse.'},
     {sel:'.hero p', html:1, zh:'私藏的设计参考网站。<b>从综合参考到真实页面</b>，日常漫游，不定时更新……', en:'Hand-picked design reference sites. <b>From awards to real product UI</b> — roam daily, updated now and then…'}
   ];
   window.applyStatic = function(){
@@ -1465,7 +1473,7 @@
   };
 
   let toastTimer;
-  function flash(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),2200); }
+  function flash(msg){ const t=$('#toast'); t.textContent=window.t(msg); t.classList.add('on'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),2200); }
   function fallbackCopy(txt){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy')}catch(e){} ta.remove(); }
   function copyText(txt,msg){ const done=()=>flash(msg||'已复制'); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>{fallbackCopy(txt);done();}); } else { fallbackCopy(txt); done(); } }
 
@@ -1900,32 +1908,35 @@
     ingesting = pending;
     go.style.display = items.length ? '' : 'none';
     go.disabled = pending;
-    go.textContent = pending ? '拆解中…' : `入库 ${items.length} 张`;
+    const EN = window.LANG==='en';
+    go.textContent = pending ? (EN?'Parsing…':'拆解中…') : (EN?`Ingest ${items.length}`:`入库 ${items.length} 张`);
     if(!items.length){
-      info.innerHTML = `<span class="cmd">${PASTE_KEY}</span> 粘贴 / 拖图 到这里入库`;
+      info.innerHTML = `<span class="cmd">${PASTE_KEY}</span> ${EN?'paste or drop images here':'粘贴 / 拖图 到这里入库'}`;
     }else if(!pending){
-      info.innerHTML = `待入库 <b>${items.length}</b> 张<span class="sub">点下面「入库」开始</span>`;
+      info.innerHTML = EN ? `<b>${items.length}</b> staged<span class="sub">click "Ingest" below to start</span>`
+                          : `待入库 <b>${items.length}</b> 张<span class="sub">点下面「入库」开始</span>`;
     }else{
       const secs = reqAt ? Math.max(0, Math.floor((Date.now()-reqAt)/1000)) : 0;
-      const elapsed = secs<60 ? `${secs}s` : `${Math.floor(secs/60)} 分钟`;
+      const elapsed = secs<60 ? `${secs}s` : (EN?`${Math.floor(secs/60)} min`:`${Math.floor(secs/60)} 分钟`);
       const auto = sawLock || locked;
-      const head = auto ? `自动拆解中 <b>${items.length}</b> 张` : `已入队 <b>${items.length}</b> 张 · 待拆解`;
+      const head = auto ? (EN?`Parsing <b>${items.length}</b> automatically`:`自动拆解中 <b>${items.length}</b> 张`)
+                        : (EN?`<b>${items.length}</b> queued · awaiting parse`:`已入队 <b>${items.length}</b> 张 · 待拆解`);
       let body;
       if(auto){
-        body = `<span class="sub">本机 agent 正在看图、拆手法 · 可切走做别的，完成自动上画布（多图 / 复杂图更久）</span>`;
+        body = `<span class="sub">${EN?"your local agent is reading the image and extracting moves · go do something else, it lands on the canvas when done (more / complex images take longer)":'本机 agent 正在看图、拆手法 · 可切走做别的，完成自动上画布（多图 / 复杂图更久）'}</span>`;
       }else if(secs>=8){
-        body = `<span class="sub">没检测到自动 watcher — 在 coding agent 里运行 <b>/ingest</b> 拆解</span>`
-             + `<span class="sub">想「点完即自动」？跑一次 <b>./setup/install.sh</b> 装 watcher</span>`;
+        body = EN ? `<span class="sub">no auto-watcher detected — run <b>/ingest</b> in your coding agent</span><span class="sub">want click-to-process? run <b>./setup/install.sh</b> once to install the watcher</span>`
+                  : `<span class="sub">没检测到自动 watcher — 在 coding agent 里运行 <b>/ingest</b> 拆解</span><span class="sub">想「点完即自动」？跑一次 <b>./setup/install.sh</b> 装 watcher</span>`;
       }else{
-        body = `<span class="sub">拆解中…完成后自动上画布</span>`;
+        body = `<span class="sub">${EN?'parsing… lands on the canvas when done':'拆解中…完成后自动上画布'}</span>`;
       }
       info.innerHTML = head + body + `<span class="sub">${elapsed}`
-        + (secs>=STUCK_MIN*60 ? ` · 久无动静？看 _ingest.log 或 <a id="tray-reset">重置</a>` : '')
+        + (secs>=STUCK_MIN*60 ? (EN?` · stuck? check _ingest.log or <a id="tray-reset">reset</a>`:` · 久无动静？看 _ingest.log 或 <a id="tray-reset">重置</a>`) : '')
         + `</span>`;
       const rb = $('#tray-reset'); if(rb) rb.onclick = resetGo;
     }
     strip.innerHTML = items.map(it=>
-      `<div class="pend${pending?' ing':''}" style="background-image:url('${it.url}')">${it.video?`<span>▶ 视频</span>`:''}<button class="rm" data-rm="${it.name}" title="移出待入库">✕</button></div>`).join('');
+      `<div class="pend${pending?' ing':''}" style="background-image:url('${it.url}')">${it.video?`<span>${EN?'▶ video':'▶ 视频'}</span>`:''}<button class="rm" data-rm="${it.name}" title="${EN?'remove from queue':'移出待入库'}">✕</button></div>`).join('');
     strip.querySelectorAll('[data-rm]').forEach(b=>{ b.onclick = ()=>unstage(b.dataset.rm); });
     return pending;
   }
