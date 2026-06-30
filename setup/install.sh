@@ -69,8 +69,21 @@ else
   echo "  (e.g. inotifywait / systemd path unit) at ./watch-inbox.sh."
 fi
 
+# open the app (file:// = double-click equivalent; modern Chrome runs it fully)
+INDEX="$CABINET_DIR/index.html"
+case "$OS" in
+  Darwin) open "$INDEX" >/dev/null 2>&1 || true ;;
+  Linux)  command -v xdg-open >/dev/null && xdg-open "$INDEX" >/dev/null 2>&1 || true ;;
+  *)      echo "Open in your browser: $INDEX" ;;
+esac
+
 echo
-echo "Done. In any project:  /translate  (slash)  or  转译  (bare word)."
+echo "✓ Set up & opened in your browser. / 已装好并在浏览器打开。"
+echo "  Connect: follow the on-page prompt, bottom-left (once). / 连接：照页面左下提示点一下（只此一次）。"
+echo "  Translate: /translate  or  转译  in any project. / 任意项目里用 /translate 或 转译。"
 [ "$OS" = "Darwin" ] && [ "$WATCHER" = "1" ] \
-  && echo "Ingest:  click \"ingest\" on the page → processed automatically." \
-  || echo "Ingest:  stage on the page → type /ingest in Claude Code."
+  && echo "  Ingest: click \"ingest\" on the page → auto-processed. / 点「入库」即自动拆。" \
+  || echo "  Ingest: stage on the page, then /ingest in Claude Code. / 暂存后敲 /ingest。"
+echo
+echo "Reopen later: double-click index.html (or ./start.sh if your browser blocks connect)."
+echo "以后再开：双击 index.html（连接被拦就用 ./start.sh）。"

@@ -66,44 +66,41 @@ product context, so it does it an order of magnitude better.
 
 ## Quickstart
 
-Cabinet is a **Claude Code project with a visual front-end** — the browser page
-is where you look; your coding agent is where the work happens. So the fastest
-setup is to let your agent do it.
+Cabinet is a **Claude Code project with a visual front-end** — the browser page is
+where you look; your coding agent is where the work happens.
 
-**Paste this into Claude Code:**
+**Set it up (once):**
 
-```text
-Set up Cabinet for me:
-1. git clone https://github.com/pxx-design/cabinet && cd cabinet
-2. run ./start.sh in the background so it opens in my browser, then tell me to click
-   "connect" (bottom-left) and pick the cabinet folder
-3. run ./setup/install.sh to install the translate triggers globally
-After that, I'll stage references in the page and tell you when to run /ingest.
+```bash
+git clone https://github.com/pxx-design/cabinet
+cd cabinet
+./setup/install.sh        # /translate + 转译 keyword + (macOS) auto-ingest watcher
 ```
 
-Step 3 installs **two global triggers**, both of which apply the moves you picked in
-any project: type **`/translate`** (slash command) or just **`转译`** (bare keyword).
-No long prompt to retype.
+`install.sh` opens the app for you the first time. **To reopen later, just double-click
+`index.html`** — on modern Chrome that's the full experience. If your browser blocks
+folder access on `file://`, run `./start.sh` (localhost) instead.
 
-**Ingest.** Stage a reference (`⌘V` → **ingest**). On **macOS**, `install.sh` set up a
-watcher, so clicking ingest processes it automatically. On other systems, type
-`/ingest` in Claude Code (it can't see your click, so you trigger it — one command).
-Don't want the watcher? Re-run `./setup/install.sh --no-watcher`.
+**The one manual step** (browser security — nothing can automate it): the first time,
+follow the on-page prompt at the bottom-left (the pulsing dot) — click **connect** →
+pick this `cabinet` folder → **Allow**. That lets the page save to disk. You do it once.
+
+**Day to day:**
+- **Add a reference** — paste (`⌘V`) into the page and hit **ingest**. On macOS the
+  watcher processes it automatically; otherwise type `/ingest` in Claude Code.
+- **Use what you collected** — in any project, type **`/translate`** (or just **`转译`**);
+  your agent applies the moves you picked, each with its borrowing boundary intact.
 
 <details>
-<summary>Prefer to set it up by hand?</summary>
+<summary>Rather have Claude Code do the setup? Paste this:</summary>
 
-1. `git clone https://github.com/pxx-design/cabinet && cd cabinet`
-2. Open the folder in Claude Code (or any agent that can read `INGEST.md`).
-3. `./start.sh` — opens at `http://localhost:8777`. The disk bridge needs
-   `localhost`; double-clicking `index.html` can browse but can't save or ingest.
-4. Click **connect** (bottom-left, the pulsing dot) and pick the `cabinet` folder.
-5. Browse and summon; paste references (`⌘V`) → **ingest** → run `/ingest`.
+```text
+Clone and set up Cabinet for me: git clone https://github.com/pxx-design/cabinet && cd cabinet,
+run ./setup/install.sh, and open index.html in my browser. Then tell me to click "connect"
+(bottom-left) and pick the cabinet folder. When I stage a reference and hit "ingest", run /ingest.
+```
 
 </details>
-
-> **Just looking?** Double-click `index.html` for a read-only preview — browsing
-> and summon work; saving, ingest, and translate need the flow above.
 
 ## The two flows
 
@@ -130,7 +127,7 @@ assets/ thumbs/   seed reference images (low-res) + thumbnails
 folio/ shots/     "find inspiration" directory — thumbnails linking to design sites
 _inbox/           drop zone for references to ingest
 INGEST.md         the agent-neutral ingest spec
-start.sh          serve over localhost (required for the disk bridge)
+start.sh          localhost fallback (if your browser blocks connect on file://)
 setup/            install.sh — installs /translate, the 转译 hook, and (macOS) the watcher
 ```
 
@@ -143,11 +140,15 @@ status of the bundled images.
 - **Claude Code** (or any agent that can read `INGEST.md`) — this does the actual
   work of ingest and translate; required for everything beyond browsing.
 - A **Chromium-based browser** for the front-end. The disk bridge uses the File
-  System Access API, which needs `localhost` (via `start.sh`), not `file://`.
+  System Access API — modern Chrome allows it from a double-clicked `file://` page;
+  if yours blocks it, `./start.sh` serves over `localhost`.
 - **`python3`** (powers `start.sh`) and **Pillow** (measures images during
   ingest); Node syntax-checks `data-v3.js`.
 - *macOS:* `./setup/install.sh` also installs a launchd watcher so clicking "ingest"
   is processed automatically (opt out with `--no-watcher`). Other OSes trigger with `/ingest`.
+- *Other agents (Codex, …):* the app, `INGEST.md` and `AGENTS.md` are agent-neutral, so
+  ingest/translate work via those. The `/ingest`, `/translate`, `转译` shortcuts and the
+  auto-watcher are Claude Code-only for now.
 
 ## License
 

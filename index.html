@@ -146,6 +146,23 @@
   @keyframes connpulse{ 0%{transform:scale(1);opacity:.55} 70%,100%{transform:scale(2.6);opacity:0} }
   body.mode-discover #conn-f{display:none}
 
+  /* 首次连接引导气泡：仅未连接·首次出现，连上 / 点✕ 即永久消失，不常驻 */
+  #conn-hint{ display:none; position:fixed; left:20px; bottom:78px; z-index:46;
+    width:228px; background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:13px 15px 12px; box-shadow:0 10px 30px rgba(26,26,26,.12);
+    font-size:12.5px; line-height:1.55; color:var(--ink) }
+  #conn-hint.on{ display:block; animation:hintIn .26s ease-out }
+  #conn-hint::after{ content:''; position:absolute; left:24px; bottom:-6px; width:12px; height:12px;
+    background:#fff; border-right:1px solid var(--line); border-bottom:1px solid var(--line); transform:rotate(45deg) }
+  #conn-hint .ch-t{ font-weight:600; margin:0 0 6px; padding-right:14px }
+  #conn-hint .ch-s{ margin:0; padding-left:17px; color:var(--ink-soft) }
+  #conn-hint .ch-s b{ color:var(--accent); font-weight:600 }
+  #conn-hint .ch-x{ position:absolute; top:7px; right:8px; border:0; background:none; cursor:pointer;
+    color:#b3ac9f; font-size:12px; line-height:1; padding:2px }
+  #conn-hint .ch-x:hover{ color:var(--ink) }
+  @keyframes hintIn{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+  body.mode-discover #conn-hint, html.demo #conn-hint{ display:none !important }
+
   /* ════ 演示模式（Vercel / ?demo=1）：隐写盘/编辑动作，只留纯浏览功能 ════ */
   html.demo #conn-f, html.demo #tray, html.demo #drop,
   html.demo #plate-cal, html.demo #plate-trash, html.demo #trash-btn{ display:none !important; }
@@ -687,6 +704,17 @@
 
   <!-- 磁盘桥连接钮（段②；左下独立）— 连一次，收的手法落 _desk.json 供「转译」读 -->
   <button id="conn-f" title="连接文件夹 — 选你下载的 cabinet 文件夹（含 data-v3.js）；收的手法才能写入 _desk.json 给「转译」用"><svg class="conn-ico" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 4.4c0-.6.4-1 1-1h2.9l1.2 1.4h6c.6 0 1 .4 1 1v5.9c0 .6-.4 1-1 1H2.6c-.6 0-1-.4-1-1V4.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span id="conn-f-txt">连接</span></button>
+
+  <!-- 首次连接引导（仅未连接·首次出现，连上 / 点✕ 即永久消失）-->
+  <div id="conn-hint">
+    <button class="ch-x" aria-label="不再提示" title="不再提示">✕</button>
+    <div class="ch-t">连接后，收的手法才存得下</div>
+    <ol class="ch-s">
+      <li>点下面「<b>连接</b>」</li>
+      <li>选这个 <b>cabinet</b> 文件夹</li>
+      <li>点「<b>允许</b>」· 只需一次</li>
+    </ol>
+  </div>
 
   <!-- 入库托盘面板（⌘V/拖图 → _inbox；左下、浮在连接钮上方）— 攒图，点「入库」写 .go 标记触发 watcher -->
   <div id="tray">
@@ -1643,14 +1671,29 @@
   async function idbGet(k){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readonly'); const q=t.objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
 
   const connBtn = $('#conn-f'), connTxt = $('#conn-f-txt');
+  { const x=document.querySelector('#conn-hint .ch-x'); if(x) x.onclick=()=>{ localStorage.setItem('cabinet.connHintDone','1'); updateConnHint(); }; }
+  function updateConnHint(){
+    const el = document.getElementById('conn-hint'); if(!el) return;
+    const show = !CABINET_DEMO
+      && !document.body.classList.contains('mode-discover')
+      && !dirHandle
+      && !localStorage.getItem('cabinet.connHintDone');
+    el.classList.toggle('on', show);
+  }
   async function refreshConn(){
     connBtn.classList.remove('live','stale');
-    if(!dirHandle){ connTxt.textContent='连接'; return false; }
-    let perm='denied';
-    try{ perm = await dirHandle.queryPermission({mode:'readwrite'}); }catch(e){}
-    if(perm==='granted'){ connBtn.classList.add('live'); connTxt.textContent=dirHandle.name||'已连接'; return true; }
-    if(perm==='prompt'){ connBtn.classList.add('stale'); connTxt.textContent='重新连接'; return false; }
-    connTxt.textContent='连接'; return false;
+    let ok=false;
+    if(!dirHandle){ connTxt.textContent='连接'; }
+    else{
+      let perm='denied';
+      try{ perm = await dirHandle.queryPermission({mode:'readwrite'}); }catch(e){}
+      if(perm==='granted'){ connBtn.classList.add('live'); connTxt.textContent=dirHandle.name||'已连接'; ok=true; }
+      else if(perm==='prompt'){ connBtn.classList.add('stale'); connTxt.textContent='重新连接'; }
+      else{ connTxt.textContent='连接'; }
+    }
+    if(ok) localStorage.setItem('cabinet.connHintDone','1');
+    updateConnHint();
+    return ok;
   }
   async function tryRestore(){
     if(CABINET_DEMO) return;
@@ -1844,7 +1887,7 @@
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) reconcile(); });
   window.__trayKick = reconcile;   // 模式切回画布时重启轮询
 
-  tryRestore().then(reconcile);
+  tryRestore().then(()=>{ reconcile(); updateConnHint(); });
   syncCanvasTrash(); renderTrash(); renderPicked();
   if(CABINET_DEMO) initDemo();
 
@@ -1862,6 +1905,7 @@
     lobes.forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
     document.body.classList.toggle('mode-canvas', mode==='canvas');
     document.body.classList.toggle('mode-discover', mode==='discover');
+    updateConnHint();
     if(mode==='canvas'){ window.scrollTo(0,0); window.__canvasResume && window.__canvasResume(); window.__trayKick && window.__trayKick(); }
     else { window.__canvasPause && window.__canvasPause(); }
   }
