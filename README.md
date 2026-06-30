@@ -74,10 +74,11 @@ where you look; your coding agent is where the work happens.
 ```bash
 git clone https://github.com/pxx-design/cabinet
 cd cabinet
-./setup/install.sh        # /translate + 转译 keyword + (macOS) auto-ingest watcher
+./setup/install.sh
 ```
 
-`install.sh` opens the app for you the first time. **To reopen later, just double-click
+`install.sh` sets up the `/translate` + `转译` triggers (plus a macOS auto-ingest
+watcher) and opens the app the first time. **To reopen later, just double-click
 `index.html`** — on modern Chrome that's the full experience. If your browser blocks
 folder access on `file://`, run `./start.sh` (localhost) instead.
 

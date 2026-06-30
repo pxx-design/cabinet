@@ -66,10 +66,11 @@ coding agent 才是「干活」的地方。
 ```bash
 git clone https://github.com/pxx-design/cabinet
 cd cabinet
-./setup/install.sh        # /translate + 转译 裸词 + (macOS) 自动入库 watcher
+./setup/install.sh
 ```
 
-`install.sh` 第一次会替你打开 app。**以后再开，直接双击 `index.html`**——现代 Chrome
+`install.sh` 装好 `/translate` + `转译` 触发器（及 macOS 自动入库 watcher），并第一次
+替你打开 app。**以后再开，直接双击 `index.html`**——现代 Chrome
 下就是全功能。若浏览器在 `file://` 下拦了文件夹授权，改用 `./start.sh`（localhost）。
 
 **唯一要你手动的一步**（浏览器安全，谁都自动不了）：第一次照页面左下的提示（那颗脉冲
