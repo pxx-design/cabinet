@@ -1819,7 +1819,7 @@
       const head = auto ? `自动拆解中 <b>${items.length}</b> 张` : `已入队 <b>${items.length}</b> 张 · 待拆解`;
       let body;
       if(auto){
-        body = `<span class="sub">watcher 正在自动拆，约一两分钟 · 可切走做别的，完成自动上画布</span>`;
+        body = `<span class="sub">本机 agent 正在看图、拆手法 · 可切走做别的，完成自动上画布（多图 / 复杂图更久）</span>`;
       }else if(secs>=8){
         body = `<span class="sub">没检测到自动 watcher — 在 coding agent 里运行 <b>/ingest</b> 拆解</span>`
              + `<span class="sub">想「点完即自动」？跑一次 <b>./setup/install.sh</b> 装 watcher</span>`;
