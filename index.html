@@ -1784,7 +1784,12 @@
     try{ const d=await dirHandle.getDirectoryHandle('_inbox'); const f=await (await d.getFileHandle('.go')).getFile(); return f.lastModified; }
     catch(e){ return null; }
   }
-  let ingesting = false;          // 供轮询调频（入库中查得勤）
+  async function hasLock(){   // watcher 一跑就在仓库根建 .ingest.lock 目录（= 拆解真在进行）
+    try{ await dirHandle.getDirectoryHandle('.ingest.lock'); return true; }
+    catch(e){ return false; }
+  }
+  function ingestReqMs(){ const v=localStorage.getItem('cabinet.ingestReq'); return v? +v : null; }   // 入库意图时间戳（watcher 会很快删 .go，故不能只看 .go）
+  let ingesting = false, sawLock = false;   // sawLock = 本次见过 watcher 锁（= 有自动 watcher）
   const STUCK_MIN = 12;           // 超过这么久给「重置」兜底
   const PASTE_KEY = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '') ? '⌘V' : 'Ctrl V';
   async function renderTray(){
@@ -1793,23 +1798,37 @@
     if(items===null){ tray.classList.remove('show'); strip.innerHTML=''; go.style.display='none'; ingesting=false; return false; }
     tray.classList.add('show');   // 已连接：托盘常驻（空态也提示）
     tray.classList.toggle('empty', !items.length);   // 空态去卡片感
-    const pending = items.length ? await hasGo() : false;
+    if(!items.length){ localStorage.removeItem('cabinet.ingestReq'); sawLock=false; }   // 空 = 完成/无待处理
+    const reqAt = items.length ? ingestReqMs() : null;
+    const locked = items.length ? await hasLock() : false;
+    if(locked) sawLock = true;
+    const goOn = items.length ? await hasGo() : false;
+    const pending = items.length>0 && (reqAt!=null || goOn || locked);   // 处理中：不只看 .go（watcher 会删它），还看锁/意图
     ingesting = pending;
     go.style.display = items.length ? '' : 'none';
     go.disabled = pending;
-    go.textContent = pending ? '已入队…' : `入库 ${items.length} 张`;
+    go.textContent = pending ? '拆解中…' : `入库 ${items.length} 张`;
     if(!items.length){
       info.innerHTML = `<span class="cmd">${PASTE_KEY}</span> 粘贴 / 拖图 到这里入库`;
     }else if(!pending){
       info.innerHTML = `待入库 <b>${items.length}</b> 张<span class="sub">点下面「入库」开始</span>`;
     }else{
-      const started = await goStartedMs();
-      const mins = started ? Math.floor((Date.now()-started)/60000) : 0;
-      const when = (!started || mins<1) ? '刚开始' : `已 ${mins} 分钟`;
-      info.innerHTML = `已入队 <b>${items.length}</b> 张 · 待拆解`
-        + `<span class="sub">在你的 coding agent 里运行 <b>/ingest</b> 拆解（装了 watcher 则自动跑）</span>`
-        + `<span class="sub">${when} · 完成后自动上画布</span>`
-        + (mins>=STUCK_MIN ? `<span class="sub">久无动静？看 _ingest.log 或 <a id="tray-reset">重置</a></span>` : '');
+      const secs = reqAt ? Math.max(0, Math.floor((Date.now()-reqAt)/1000)) : 0;
+      const elapsed = secs<60 ? `${secs}s` : `${Math.floor(secs/60)} 分钟`;
+      const auto = sawLock || locked;
+      const head = auto ? `自动拆解中 <b>${items.length}</b> 张` : `已入队 <b>${items.length}</b> 张 · 待拆解`;
+      let body;
+      if(auto){
+        body = `<span class="sub">watcher 正在自动拆，约一两分钟 · 可切走做别的，完成自动上画布</span>`;
+      }else if(secs>=8){
+        body = `<span class="sub">没检测到自动 watcher — 在 coding agent 里运行 <b>/ingest</b> 拆解</span>`
+             + `<span class="sub">想「点完即自动」？跑一次 <b>./setup/install.sh</b> 装 watcher</span>`;
+      }else{
+        body = `<span class="sub">拆解中…完成后自动上画布</span>`;
+      }
+      info.innerHTML = head + body + `<span class="sub">${elapsed}`
+        + (secs>=STUCK_MIN*60 ? ` · 久无动静？看 _ingest.log 或 <a id="tray-reset">重置</a>` : '')
+        + `</span>`;
       const rb = $('#tray-reset'); if(rb) rb.onclick = resetGo;
     }
     strip.innerHTML = items.map(it=>
@@ -1821,15 +1840,19 @@
     try{ const inbox=await dirHandle.getDirectoryHandle('_inbox'); await inbox.removeEntry(name); await renderTray(); flash('已移出待入库'); }
     catch(e){ flash('移出失败: '+e.message); }
   }
-  async function resetGo(){       // 卡死兜底：清掉 .go（停后续轮次，不中断正在跑的那轮），让用户能重新触发
+  async function resetGo(){       // 卡死兜底：清掉 .go + 意图，让用户能重新触发（不中断正在跑的那轮）
     if(!(await refreshConn())) return;
-    try{ const inbox=await dirHandle.getDirectoryHandle('_inbox'); await inbox.removeEntry('.go'); flash('已重置 — 可重新点「入库」（不会中断正在跑的那轮）'); renderTray(); }
+    try{ const inbox=await dirHandle.getDirectoryHandle('_inbox'); await inbox.removeEntry('.go'); localStorage.removeItem('cabinet.ingestReq'); sawLock=false; flash('已重置 — 可重新点「入库」'); renderTray(); }
     catch(e){ flash('重置失败: '+e.message); }
   }
   $('#ingest-go').onclick = async ()=>{
     if(!(await refreshConn())){ flash('先点左下「连接」'); return; }
-    try{ await saveFile('_inbox','.go',new Blob(['go'])); flash('已入队 — 在 coding agent 里运行 /ingest 拆解；完成后本页自动上图'); renderTray(); }
-    catch(e){ flash('触发失败: '+e.message); }
+    try{
+      localStorage.setItem('cabinet.ingestReq', String(Date.now())); sawLock=false;
+      await saveFile('_inbox','.go',new Blob(['go']));
+      flash('已入队 — 装了 watcher 会自动拆；否则在 coding agent 里运行 /ingest');
+      renderTray();
+    }catch(e){ flash('触发失败: '+e.message); }
   };
   async function stage(file){
     if(!window.showDirectoryPicker){ flash('请用 Chrome，并先连接文件夹'); return; }
@@ -1876,7 +1899,7 @@
   function scheduleReconcilePoll(){
     clearTimeout(pollT);
     if(!dirHandle || document.body.classList.contains('mode-discover')) return;
-    pollT = setTimeout(reconcile, ingesting ? 12000 : 60000);
+    pollT = setTimeout(reconcile, ingesting ? 4000 : 60000);
   }
   async function reconcile(){
     if(document.body.classList.contains('mode-discover')){ return; }   // 找灵感模式不轮询
