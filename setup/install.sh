@@ -11,6 +11,8 @@ set -e
 
 CABINET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CLAUDE_DIR="$HOME/.claude"
+# python3 on macOS/Linux; plain `python` is common on Windows (Git Bash)
+PY="$(command -v python3 || command -v python || echo python3)"
 WATCHER=1
 [ "${1:-}" = "--no-watcher" ] && WATCHER=0
 mkdir -p "$CLAUDE_DIR/commands" "$CLAUDE_DIR/hooks"
@@ -24,7 +26,7 @@ echo "✓ /translate  → $CLAUDE_DIR/commands/translate.md"
 sed "s#__CABINET_DIR__#${CABINET_DIR}#g" "$CABINET_DIR/setup/translate-hook.sh" \
   > "$CLAUDE_DIR/hooks/cabinet-translate.sh"
 chmod +x "$CLAUDE_DIR/hooks/cabinet-translate.sh"
-python3 - "$CLAUDE_DIR/settings.json" "$CLAUDE_DIR/hooks/cabinet-translate.sh" <<'PY'
+"$PY" - "$CLAUDE_DIR/settings.json" "$CLAUDE_DIR/hooks/cabinet-translate.sh" <<'PY'
 import json, os, sys
 path, cmd = sys.argv[1], sys.argv[2]
 data = {}

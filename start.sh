@@ -8,4 +8,5 @@ URL="http://localhost:$PORT/index.html"
 echo "Cabinet → $URL   (Ctrl+C to stop / 停止)"
 echo "Connect via the on-page prompt, bottom-left. / 连接：照页面左下提示点一下。"
 ( sleep 1; (command -v open >/dev/null && open "$URL") || (command -v xdg-open >/dev/null && xdg-open "$URL") ) >/dev/null 2>&1 &
-python3 -m http.server "$PORT"
+PY="$(command -v python3 || command -v python || echo python3)"
+"$PY" -m http.server "$PORT"

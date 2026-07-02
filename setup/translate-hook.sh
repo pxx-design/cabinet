@@ -7,7 +7,8 @@
 # Registered in ~/.claude/settings.json under hooks.UserPromptSubmit.
 
 input=$(cat)
-prompt=$(printf '%s' "$input" | python3 -c 'import sys, json
+PY="$(command -v python3 || command -v python || echo python3)"
+prompt=$(printf '%s' "$input" | "$PY" -c 'import sys, json
 try:
     d = json.load(sys.stdin)
     print(d.get("prompt") or d.get("user_input") or "")
