@@ -8,7 +8,7 @@ by 布灵布灵灵 · [Xiaohongshu](https://xhslink.com/m/1ht5s0trmNo) · [Live 
 
 MIT · runs in your browser · no backend
 
-<img src="docs/canvas.jpg" alt="The Cabinet canvas — a feel-map of your references" width="100%">
+<img src="docs/canvas.jpg" alt="The Cabinet canvas — a feel-map of your references" width="49.5%"> <img src="docs/drawer.jpg" alt="The drawer — one reference broken into named moves" width="49.5%">
 
 </div>
 
@@ -137,8 +137,6 @@ the full experience. If your browser blocks folder access on `file://`, run
 - **Translate `/translate`** — in *any* project, your agent reads the moves you
   picked (`_desk.json`), combines them with the product you're building, and
   writes a translation plan first — it touches code only after you confirm.
-
-<img src="docs/drawer.jpg" alt="The drawer — one reference broken into named moves" width="100%">
 
 **Anti-copying is structural:** a move ships only its `say` (the instruction),
 never a whole-image prompt; the `tune` boundary travels with each move; colors
