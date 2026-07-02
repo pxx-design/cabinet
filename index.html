@@ -1482,32 +1482,32 @@
   /* ════ 演示模式（Vercel / ?demo=1）：纯浏览可玩，写盘/喂图转下载 CTA ════ */
   const CABINET_DEMO = !!window.CABINET_DEMO;
   const REPO_URL = window.REPO_URL || 'https://github.com/pxx-design/cabinet';
-  const DEMO_LANG = window.LANG;
-  const DEMO_T = {
+  const DEMO_STR = {
     zh:{ cta:'在线体验版，创建自己的<b>灵感库 →</b>',
          head:'你收的手法',
          pitch:'下载「灵感库」，一键让你的 AI 把这些手法用起来',
          get:'去获取',
          nudge:'收好了 ✓ 想用起来？点右上角「已收」',
          note:'图片仅为示例，如涉及版权请联系删除' },
-    en:{ cta:'Live demo — create your own <b>library →</b>',
+    en:{ cta:'Live demo — create your&nbsp;<b>cabinet →</b>',
          head:'Your saved techniques',
          pitch:'Get Cabinet — let your AI put these techniques to work, in one click',
          get:'Get it',
          nudge:'Saved ✓ Want to use it? Open "Saved" (top-right)',
          note:'Images shown as examples — contact us to remove.' }
-  }[DEMO_LANG];
+  };
+  function DT(){ return DEMO_STR[window.LANG] || DEMO_STR.en; }   // 随当前语言实时取
   function initDemo(){
-    const cta=$('#demo-cta'); if(cta){ cta.innerHTML=DEMO_T.cta; cta.href=REPO_URL; }
-    const note=$('#demo-note'); if(note) note.textContent=DEMO_T.note;
-    const head=document.querySelector('.pp-head span'); if(head) head.textContent=DEMO_T.head;
+    const cta=$('#demo-cta'); if(cta){ cta.innerHTML=DT().cta; cta.href=REPO_URL; }
+    const note=$('#demo-note'); if(note) note.textContent=DT().note;
+    const head=document.querySelector('.pp-head span'); if(head) head.textContent=DT().head;
     const foot=document.querySelector('.pp-foot');
-    if(foot) foot.innerHTML=`<div class="pp-pitch">${DEMO_T.pitch}</div><a class="pp-get" href="${REPO_URL}" target="_blank" rel="noopener">${DEMO_T.get}</a>`;
+    if(foot) foot.innerHTML=`<div class="pp-pitch">${DT().pitch}</div><a class="pp-get" href="${REPO_URL}" target="_blank" rel="noopener">${DT().get}</a>`;
   }
   function demoNudge(){
     if(localStorage.getItem('lingganku.demoNudged')) return;
     localStorage.setItem('lingganku.demoNudged','1');
-    flash(DEMO_T.nudge);
+    flash(DT().nudge);
   }
 
   // 段①：收存本地（localStorage）；写 _desk.json 给「转译」用 = 段②（磁盘桥）
@@ -2018,6 +2018,12 @@
   tryRestore().then(()=>{ reconcile(); updateConnHint(); });
   syncCanvasTrash(); renderTrash(); renderPicked();
   if(CABINET_DEMO) initDemo();
+  // 切换语言时重刷动态内容（demo 文案 / 托盘 / 打开的抽屉）——静态 chrome 由 setLang→applyStatic 管，画布 rAF 自动跟
+  document.addEventListener('cabinet:lang', ()=>{
+    if(CABINET_DEMO) initDemo();
+    try{ renderTray(); }catch(e){}
+    if($('#drawer').classList.contains('on')) renderDrawer();
+  });
 
   window.openDrawer = openDrawer;
 })();
