@@ -14,10 +14,6 @@ MIT · runs in your browser · no backend
 
 ## What it solves
 
-> A **bookmark folder / mood board** answers: "I saw something good — save it."
->
-> **Cabinet** answers: "How do I get this feeling into my own product?"
-
 You see a design and feel *something* — quiet, expensive, alive — but when you
 ask an AI to "make it feel like that," the words come out vague and the result
 comes back generic.
@@ -27,6 +23,10 @@ What's missing is that the **feeling was never broken down into transferable mov
 Cabinet does exactly that: it breaks a reference image into **facets** — named,
 reusable moves — and hands them to your coding agent as precise instructions,
 so you carry the technique instead of copying the picture.
+
+> A **bookmark folder / mood board** answers: "I saw something good — save it."
+>
+> **Cabinet** answers: "How do I get this feeling into my own product?"
 
 **Feel it first** → the [live demo](https://cabinet-lingganku.vercel.app/).
 The Discover tab also curates quality design-reference sites — find, decode,
